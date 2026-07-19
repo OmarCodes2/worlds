@@ -525,7 +525,7 @@ export default function App() {
                 </ul>
               </>
             )}
-            {debug && lastGemini && (
+            {debug && lastGemini != null && (
               <details open>
                 <summary>Debug payload</summary>
                 <pre>{JSON.stringify(lastGemini, null, 2)}</pre>

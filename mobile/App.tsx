@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -54,7 +55,20 @@ const C = {
 };
 
 type Tab = 'home' | 'worlds' | 'journey' | 'you';
-type Screen = Tab | 'detail' | 'setup' | 'run' | 'recap' | 'history' | 'settings';
+type Screen = Tab | 'detail' | 'setup' | 'run' | 'summary' | 'recap' | 'history' | 'settings';
+
+type RunSummaryData = {
+  runId: string | null;
+  nodeId: string;
+  elapsedSeconds: number;
+  distanceKm: number;
+  averagePaceSeconds: number;
+  checkpoint: string;
+  objective: string;
+  storyStep: number;
+  storyTotal: number;
+  lastResult: string;
+};
 
 const worlds = [
   { title: 'Greywatch', genre: 'Worlds Original', tone: 'Blood in the chapel', colors: ['#17100F', '#613329'] as const },
@@ -68,6 +82,13 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('home');
   const [runLength, setRunLength] = useState('30 min');
   const [targetPace, setTargetPace] = useState('6:00 /km');
+  const [lastRun, setLastRun] = useState<RunSummaryData | null>(null);
+  const [resumeRun, setResumeRun] = useState<RunSummaryData | null>(null);
+
+  const openNewRunSetup = () => {
+    setResumeRun(null);
+    setScreen('setup');
+  };
 
   const goTab = (next: Tab) => {
     setTab(next);
@@ -80,29 +101,44 @@ export default function App() {
   return (
     <SafeAreaView style={[styles.safe, dark && styles.safeDark]}>
       <StatusBar style={dark ? 'light' : 'dark'} />
-      {screen === 'home' && <Home onContinue={() => setScreen('setup')} onWorld={() => setScreen('detail')} />}
+      {screen === 'home' && <Home onContinue={openNewRunSetup} onWorld={() => setScreen('detail')} />}
       {screen === 'worlds' && <Worlds onWorld={() => setScreen('detail')} />}
       {screen === 'journey' && <Journey />}
       {screen === 'you' && <You onHistory={() => setScreen('history')} onSettings={() => setScreen('settings')} />}
-      {screen === 'detail' && <WorldDetail onBack={() => setScreen(tab)} onEnter={() => setScreen('setup')} />}
+      {screen === 'detail' && <WorldDetail onBack={() => setScreen(tab)} onEnter={openNewRunSetup} />}
       {screen === 'setup' && (
         <PreRun
           length={runLength}
           onLength={setRunLength}
           targetPace={targetPace}
           onTargetPace={setTargetPace}
-          onBack={() => setScreen('detail')}
+          resumeCheckpoint={resumeRun?.runId ? resumeRun.checkpoint : null}
+          onBack={() => setScreen(resumeRun?.runId ? 'summary' : 'detail')}
           onStart={() => setScreen('run')}
         />
       )}
       {screen === 'run' && (
         <ActiveRun
           targetPace={targetPace}
-          onBack={() => setScreen('setup')}
-          onFinish={() => setScreen('recap')}
+          resumeFrom={resumeRun}
+          onFinish={(summary, storyComplete) => {
+            setLastRun(summary);
+            if (storyComplete) setResumeRun(null);
+            setScreen(storyComplete ? 'recap' : 'summary');
+          }}
         />
       )}
-      {screen === 'recap' && <Recap onDone={() => goTab('home')} onNewRun={() => setScreen('setup')} />}
+      {screen === 'summary' && lastRun && (
+        <RunSummary
+          run={lastRun}
+          onDone={() => goTab('home')}
+          onResume={() => {
+            setResumeRun(lastRun);
+            setScreen('setup');
+          }}
+        />
+      )}
+      {screen === 'recap' && <Recap run={lastRun} onDone={() => goTab('home')} onNewRun={openNewRunSetup} />}
       {screen === 'history' && <RunHistory onBack={() => setScreen('you')} onRun={() => setScreen('recap')} />}
       {screen === 'settings' && <Settings onBack={() => setScreen('you')} />}
       {showTabs && <TabBar active={tab} onSelect={goTab} />}
@@ -238,6 +274,7 @@ function PreRun({
   onLength,
   targetPace,
   onTargetPace,
+  resumeCheckpoint,
   onBack,
   onStart,
 }: {
@@ -245,13 +282,22 @@ function PreRun({
   onLength: (value: string) => void;
   targetPace: string;
   onTargetPace: (value: string) => void;
+  resumeCheckpoint: string | null;
   onBack: () => void;
   onStart: () => void;
 }) {
   return (
     <Page noTab>
-      <Header eyebrow="GREYWATCH · BLOOD IN THE CHAPEL" title="Shape this run." onBack={onBack} />
-      <Text style={styles.intro}>Set the pace that “hold it” means for this run. Demo controls replace GPS.</Text>
+      <Header
+        eyebrow={resumeCheckpoint ? 'CONTINUE GREYWATCH' : 'GREYWATCH · BLOOD IN THE CHAPEL'}
+        title={resumeCheckpoint ? 'Return to the story.' : 'Shape this run.'}
+        onBack={onBack}
+      />
+      <Text style={styles.intro}>
+        {resumeCheckpoint
+          ? `Resume at ${resumeCheckpoint}. Choose how long you want to run next.`
+          : 'Set the pace that “hold it” means for this run. Demo controls replace GPS.'}
+      </Text>
       <FormSection title="Run length" note="30 min recommended">
         <Pills values={['15 min', '30 min', '45 min']} selected={length} onSelect={onLength} />
       </FormSection>
@@ -268,7 +314,7 @@ function PreRun({
         <Text style={styles.bodyMuted}>Choose a familiar route and obey local traffic rules.</Text>
       </View>
       <View style={styles.bottomAction}>
-        <PrimaryButton label="Start story" onPress={onStart} />
+        <PrimaryButton label={resumeCheckpoint ? 'Resume story' : 'Start story'} onPress={onStart} />
       </View>
     </Page>
   );
@@ -299,12 +345,12 @@ type RunPhase = 'loading' | 'playing' | 'awaiting' | 'resolving' | 'listening' |
 
 function ActiveRun({
   targetPace,
-  onBack,
+  resumeFrom,
   onFinish,
 }: {
   targetPace: string;
-  onBack: () => void;
-  onFinish: () => void;
+  resumeFrom: RunSummaryData | null;
+  onFinish: (summary: RunSummaryData, storyComplete: boolean) => void;
 }) {
   const targetPaceSeconds = paceToSeconds(targetPace);
   const [paused, setPaused] = useState(false);
@@ -316,6 +362,7 @@ function ActiveRun({
   const [node, setNode] = useState<StoryNode | null>(null);
   const [lineIndex, setLineIndex] = useState(0);
   const [currentPace, setCurrentPace] = useState(targetPaceSeconds);
+  const [storyStep, setStoryStep] = useState(1);
   const [transcript, setTranscript] = useState('');
   const [lastResult, setLastResult] = useState('');
   const [error, setError] = useState('');
@@ -374,13 +421,21 @@ function ActiveRun({
 
   useEffect(() => {
     let active = true;
-    Promise.all([getGreywatchStory(), startRun(targetPaceSeconds)])
-      .then(([story, run]) => {
+    const initializeRun = async () => {
+      const story = await getGreywatchStory();
+      const run = resumeFrom?.runId
+        ? { id: resumeFrom.runId, currentNodeId: resumeFrom.nodeId }
+        : await startRun(targetPaceSeconds);
+      return { story, run };
+    };
+    initializeRun()
+      .then(({ story, run }) => {
         if (!active) return;
         const opening = story.nodes.find((candidate) => candidate.id === run.currentNodeId);
-        if (!opening) throw new Error('The opening Greywatch scene is missing.');
+        if (!opening) throw new Error('The saved Greywatch scene is missing.');
         setRunId(run.id);
         setNode(opening);
+        setStoryStep(resumeFrom?.storyStep ?? 1);
         setLineIndex(0);
         setPhase('loading');
       })
@@ -394,7 +449,7 @@ function ActiveRun({
       if (speechEndTimer.current) clearTimeout(speechEndTimer.current);
       ExpoSpeechRecognitionModule.abort();
     };
-  }, [targetPaceSeconds]);
+  }, [resumeFrom?.nodeId, resumeFrom?.runId, resumeFrom?.storyStep, targetPaceSeconds]);
 
   useEffect(() => {
     if (!currentLine) return;
@@ -450,6 +505,7 @@ function ActiveRun({
 
   const enterNode = useCallback((nextNode: StoryNode, result: string) => {
     setNode(nextNode);
+    setStoryStep((value) => Math.min(4, value + 1));
     setLineIndex(0);
     setTranscript('');
     setLastResult(result);
@@ -695,13 +751,31 @@ function ActiveRun({
     setPaused(true);
   };
 
-  const leaveRun = () => {
+  const buildSummary = (): RunSummaryData => ({
+    runId,
+    nodeId: node?.id ?? 'root',
+    elapsedSeconds,
+    distanceKm,
+    averagePaceSeconds: distanceKm > 0.01 ? Math.round(elapsedSeconds / distanceKm) : currentPace,
+    checkpoint: node?.title ?? 'Blood in the Chapel',
+    objective: node?.objective ?? 'Return to Greywatch.',
+    storyStep,
+    storyTotal: 4,
+    lastResult,
+  });
+
+  const endRun = () => {
     player.pause();
     if (phase === 'listening') {
       speechCancelledByControl.current = true;
       ExpoSpeechRecognitionModule.abort();
     }
-    onBack();
+    onFinish(buildSummary(), false);
+  };
+
+  const finishRun = () => {
+    player.pause();
+    onFinish(buildSummary(), true);
   };
 
   const audioState = paused
@@ -724,9 +798,9 @@ function ActiveRun({
       <View style={styles.runTopBar}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel="Pause run"
           hitSlop={8}
-          onPress={leaveRun}
+          onPress={togglePause}
           style={({ pressed }) => [styles.runBack, pressed && styles.runControlPressed]}
         >
           <Ionicons name="chevron-back" size={28} color={C.white} />
@@ -822,7 +896,7 @@ function ActiveRun({
         {phase === 'complete' && (
           <View style={styles.sensorBlock}>
             <Text style={styles.transcript}>The story heard “{transcript}” and chose {lastResult}.</Text>
-            <DemoButton wide label="Finish this run" onPress={onFinish} />
+            <DemoButton wide label="Finish this run" onPress={finishRun} />
           </View>
         )}
       </View>
@@ -855,11 +929,104 @@ function ActiveRun({
           <Text style={styles.controlText}>Repeat</Text>
         </Pressable>
       </View>
+      <Modal transparent visible={paused} animationType="slide" onRequestClose={resume}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Resume run"
+          onPress={resume}
+          style={styles.modalShade}
+        />
+        <View style={styles.pauseSheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.pauseEyebrow}>GREYWATCH · RUN PAUSED</Text>
+          <Text style={styles.pageTitle}>Catch your breath.</Text>
+          <Text style={styles.pauseBody}>Your time, route and story checkpoint are safe.</Text>
+          <View style={styles.pauseFacts}>
+            <Stat value={formatElapsed(elapsedSeconds)} label="TIME" />
+            <Stat value={distanceKm.toFixed(2)} label="KM" />
+          </View>
+          <PrimaryButton label="Resume run" onPress={resume} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="End run and view summary"
+            style={({ pressed }) => [styles.endRunButton, pressed && styles.endRunButtonPressed]}
+            onPress={endRun}
+          >
+            <Text style={styles.endRunButtonText}>End run & view summary</Text>
+          </Pressable>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-function Recap({ onDone, onNewRun }: { onDone: () => void; onNewRun: () => void }) {
+function RunSummary({
+  run,
+  onDone,
+  onResume,
+}: {
+  run: RunSummaryData;
+  onDone: () => void;
+  onResume: () => void;
+}) {
+  return (
+    <Page noTab>
+      <Header eyebrow="RUN SAVED · GREYWATCH" title="Your run." />
+      <View style={styles.summaryStats}>
+        <View style={styles.summaryPrimaryStat}>
+          <Text style={styles.summaryStatValue}>{run.distanceKm.toFixed(2)}</Text>
+          <Text style={styles.summaryStatUnit}>KM</Text>
+          <Text style={[styles.summaryStatLabel, styles.summaryPrimaryLabel]}>DISTANCE</Text>
+        </View>
+        <View style={styles.summarySecondaryStats}>
+          <View style={styles.summarySecondaryStat}>
+            <Text style={styles.summarySecondaryValue}>{formatElapsed(run.elapsedSeconds)}</Text>
+            <Text style={styles.summaryStatLabel}>TIME</Text>
+          </View>
+          <View style={styles.summarySecondaryStat}>
+            <Text style={styles.summarySecondaryValue}>{formatPace(run.averagePaceSeconds)}</Text>
+            <Text style={styles.summaryStatLabel}>AVG PACE /KM</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.storyProgressHeader}>
+        <Text style={styles.cardEyebrow}>STORY PROGRESS</Text>
+        <Text style={styles.storyProgressCount}>{run.storyStep} OF {run.storyTotal} MOMENTS</Text>
+      </View>
+      <View
+        accessibilityLabel={`Story progress, ${run.storyStep} of ${run.storyTotal} moments reached`}
+        style={styles.storyProgressTrack}
+      >
+        {Array.from({ length: run.storyTotal }).map((_, index) => (
+          <View
+            key={index}
+            style={[styles.storyProgressSegment, index < run.storyStep && styles.storyProgressSegmentReached]}
+          />
+        ))}
+      </View>
+      <View style={styles.storyCheckpoint}>
+        <Text style={styles.storyCheckpointLabel}>CHECKPOINT SAVED</Text>
+        <Text style={styles.storyCheckpointTitle}>{run.checkpoint}</Text>
+        <Text style={styles.bodyMuted}>{run.lastResult ? `Your last choice: ${run.lastResult}. ` : ''}Next: {run.objective}</Text>
+      </View>
+
+      <View style={styles.summaryActions}>
+        <PrimaryButton label={run.runId ? 'Resume story' : 'Start a new run'} onPress={onResume} />
+        <Text style={styles.summaryActionHint}>
+          {run.runId
+            ? 'Choose the length of your next run. Greywatch will continue from this checkpoint.'
+            : 'The checkpoint could not be saved. You can still begin a new run.'}
+        </Text>
+        <Pressable style={styles.secondaryButton} onPress={onDone}>
+          <Text style={styles.secondaryButtonText}>Return home</Text>
+        </Pressable>
+      </View>
+    </Page>
+  );
+}
+
+function Recap({ run, onDone, onNewRun }: { run: RunSummaryData | null; onDone: () => void; onNewRun: () => void }) {
   return (
     <Page noTab>
       <Header eyebrow="RUN COMPLETE · GREYWATCH" title="The chapel remembers your choice." />
@@ -877,9 +1044,9 @@ function Recap({ onDone, onNewRun }: { onDone: () => void; onNewRun: () => void 
       <Consequence tag="MOVEMENT" text="Your direction selected the route to the Lantern Vault." />
       <Consequence tag="CONSEQUENCE" text="Your pace determined who made it through the gate." />
       <View style={styles.stats}>
-        <Stat value="30:08" label="TIME" />
-        <Stat value="5.14" label="KM" />
-        <Stat value="5:52" label="AVG PACE" />
+        <Stat value={run ? formatElapsed(run.elapsedSeconds) : '30:08'} label="TIME" />
+        <Stat value={run ? run.distanceKm.toFixed(2) : '5.14'} label="KM" />
+        <Stat value={run ? formatPace(run.averagePaceSeconds) : '5:52'} label="AVG PACE" />
       </View>
       <View style={styles.nextHook}>
         <Text style={styles.cardEyebrow}>NEXT TIME</Text>
@@ -1176,7 +1343,35 @@ const styles = StyleSheet.create({
   sensorRow: { flexDirection: 'row', gap: 10, marginTop: 12 }, sensorBlock: { gap: 9, marginTop: 12 }, paceAdjustRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, sensorValue: { flex: 1, textAlign: 'center', fontFamily: 'Arial Narrow', fontSize: 18, color: C.white, fontWeight: '700' }, transcript: { fontFamily: 'Arial', fontSize: 12, lineHeight: 17, color: '#D5D7D9' },
   demoButton: { flex: 1, minHeight: 42, borderRadius: 21, borderWidth: 1, borderColor: '#4A4E53', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 }, demoButtonWide: { flex: 0, width: '100%' }, demoButtonPressed: { backgroundColor: '#25282D', borderColor: C.torch }, demoButtonText: { fontFamily: 'Arial', fontSize: 12, color: C.white, fontWeight: '700' },
   runControls: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 35, paddingVertical: 18, paddingHorizontal: 20 }, roundControl: { width: 62, minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 5 }, controlGlyph: { color: '#8F9297', fontFamily: 'Arial', fontSize: 14, fontWeight: '700' }, controlGlyphActive: { color: C.white }, controlText: { color: '#8F9297', fontFamily: 'Arial', fontSize: 10 }, controlTextActive: { color: C.white }, runControlPressed: { opacity: 0.6 }, pauseControl: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center' }, pauseControlPressed: { backgroundColor: '#D8D6D0', transform: [{ scale: 0.97 }] },
+  modalShade: { flex: 1, backgroundColor: 'rgba(0,0,0,0.62)' },
+  pauseSheet: { backgroundColor: C.paper, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  sheetHandle: { width: 40, height: 4, backgroundColor: C.line, borderRadius: 2, alignSelf: 'center', marginBottom: 24 },
+  pauseEyebrow: { fontFamily: 'Arial', fontSize: 10, lineHeight: 14, letterSpacing: 1.5, color: C.muted, fontWeight: '700', marginBottom: 7 },
+  pauseBody: { fontFamily: 'Arial', fontSize: 15, lineHeight: 21, color: C.muted, marginTop: 8 },
+  pauseFacts: { flexDirection: 'row', backgroundColor: '#E9E6DF', borderRadius: 16, paddingVertical: 16, marginTop: 20, marginBottom: 8 },
+  endRunButton: { minHeight: 56, borderRadius: 28, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  endRunButtonPressed: { backgroundColor: '#E9E6DF' },
+  endRunButtonText: { fontFamily: 'Arial', fontSize: 15, lineHeight: 20, color: C.ink, fontWeight: '700' },
   secondaryButton: { height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, secondaryButtonText: { fontFamily: 'Arial', fontSize: 15, fontWeight: '700', color: C.muted },
+  summaryStats: { backgroundColor: C.ink, borderRadius: 20, padding: 20, marginTop: 12 },
+  summaryPrimaryStat: { flexDirection: 'row', alignItems: 'baseline', borderBottomWidth: 1, borderBottomColor: '#292C31', paddingBottom: 18 },
+  summaryStatValue: { fontFamily: 'Arial Narrow', fontVariant: ['tabular-nums'], fontSize: 58, lineHeight: 62, color: C.white, fontWeight: '700', letterSpacing: -1.5 },
+  summaryStatUnit: { fontFamily: 'Arial', fontSize: 13, lineHeight: 18, color: '#A5A8AC', fontWeight: '700', marginLeft: 7 },
+  summaryStatLabel: { fontFamily: 'Arial', fontSize: 8, lineHeight: 11, letterSpacing: 1.2, color: '#8E9298', fontWeight: '700' },
+  summaryPrimaryLabel: { marginLeft: 'auto' },
+  summarySecondaryStats: { flexDirection: 'row', paddingTop: 18 },
+  summarySecondaryStat: { flex: 1 },
+  summarySecondaryValue: { fontFamily: 'Arial Narrow', fontVariant: ['tabular-nums'], fontSize: 24, lineHeight: 29, color: C.white, fontWeight: '700' },
+  storyProgressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 30 },
+  storyProgressCount: { fontFamily: 'Arial', fontSize: 9, lineHeight: 13, letterSpacing: 1.1, color: C.muted, fontWeight: '700' },
+  storyProgressTrack: { flexDirection: 'row', gap: 6, marginTop: 10 },
+  storyProgressSegment: { flex: 1, height: 5, borderRadius: 3, backgroundColor: C.line },
+  storyProgressSegmentReached: { backgroundColor: C.torch },
+  storyCheckpoint: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, paddingVertical: 18, marginTop: 18 },
+  storyCheckpointLabel: { fontFamily: 'Arial', fontSize: 9, lineHeight: 13, letterSpacing: 1.3, color: C.muted, fontWeight: '700' },
+  storyCheckpointTitle: { fontFamily: 'Arial', fontSize: 20, lineHeight: 25, color: C.ink, fontWeight: '700', marginTop: 6, marginBottom: 5 },
+  summaryActions: { marginTop: 18 },
+  summaryActionHint: { fontFamily: 'Arial', fontSize: 12, lineHeight: 18, color: C.muted, textAlign: 'center', marginHorizontal: 18, marginTop: 9 },
   recapLead: { fontFamily: 'Arial', fontSize: 16, lineHeight: 23, color: C.muted, marginTop: 4, marginBottom: 22 }, recapMap: { height: 240, borderRadius: 20, backgroundColor: '#171A19', overflow: 'hidden' }, recapRoute: { position: 'absolute', left: 15, top: 135, width: 260, height: 5, borderRadius: 3, backgroundColor: C.torch }, recapRouteTwo: { left: 200, top: 92, width: 150, backgroundColor: '#71757A' }, moment: { position: 'absolute', width: 26, height: 26, borderRadius: 13, backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: C.ink }, momentOne: { left: 54, top: 143 }, momentTwo: { left: 170, top: 106 }, momentThree: { right: 42, top: 79 }, momentText: { fontFamily: 'Arial', fontSize: 10, fontWeight: '700', color: C.ink }, recapMapLabel: { position: 'absolute', left: 16, bottom: 14, fontFamily: 'Arial', fontSize: 9, letterSpacing: 1.4, color: '#9EA19E', fontWeight: '700' },
   consequenceRow: { flexDirection: 'row', paddingVertical: 14, borderTopWidth: 1, borderColor: C.line }, consequenceTag: { width: 104, fontFamily: 'Arial', fontSize: 9, letterSpacing: 1.2, color: C.muted, fontWeight: '700', paddingTop: 3 }, consequenceBody: { flex: 1, fontFamily: 'Arial', fontSize: 14, lineHeight: 20, color: C.ink, fontWeight: '600' },
   stats: { flexDirection: 'row', backgroundColor: '#E9E6DF', borderRadius: 16, paddingVertical: 18, marginTop: 24 }, stat: { flex: 1, alignItems: 'center' }, statValue: { fontFamily: 'Arial Narrow', fontSize: 21, color: C.ink, fontWeight: '700' }, statLabel: { fontFamily: 'Arial', fontSize: 8, letterSpacing: 1.1, color: C.muted, fontWeight: '700', marginTop: 3 }, nextHook: { borderTopWidth: 1, borderColor: C.line, paddingTop: 20, marginTop: 28, marginBottom: 8 },

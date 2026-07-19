@@ -708,7 +708,7 @@ bullets([
     "Never repeat a detected choice while waiting for dialogue. One acknowledgement is enough.",
 ])
 heading("Controls", 2)
-paragraph("Pause, volume and captions remain available. Skip-forward is not a primary control because story timing and movement are connected. If a runner misses a line, offer a single 'Repeat last line' action and preserve state.")
+paragraph("Pause, volume and captions remain available. Pausing opens a protected sheet with Resume run as the primary action and End run & view summary as a clear secondary action. The system back control opens this sheet rather than abandoning the session. Skip-forward is not a primary control because story timing and movement are connected. If a runner misses a line, offer a single 'Repeat last line' action and preserve state.")
 
 # 17 Recap
 page_break()
@@ -732,6 +732,23 @@ data_table(["Entry type", "Example"], [
 ], [1.5, 5.65])
 callout("Shareable artifact", "Generate a restrained story card: world art, one consequence line and a simplified route. Do not turn the recap into a generic fitness achievement template.")
 
+page_break()
+title_block("16A / Early-run summary", "Close the workout. Keep the story.", "Ending a physical run before a story beat is complete opens a functional summary, distinct from the completed-story recap. It may lead with distance, duration and average pace because the runner is closing a workout, but it must immediately confirm the saved story checkpoint and the next authored objective.")
+heading("Summary order", 2)
+numbered([
+    "Run facts - Distance is dominant; duration and average pace are secondary. No calories, badges or score.",
+    "Story state - Show a named checkpoint plus segmented moments reached; use a count, not a percentage or completion grade.",
+    "Continuation - Resume story returns to run planning and promises continuation from the saved checkpoint.",
+])
+heading("State handoff", 2)
+data_table(["Moment", "Required behavior"], [
+    ("Pause", "Freeze workout telemetry and story audio. Resume run is primary; ending names the summary destination."),
+    ("End", "Snapshot elapsed time, distance, average pace and the current authored story node."),
+    ("Summary", "State that the run is saved without implying the current story beat was completed."),
+    ("Resume", "Return to pre-run planning. Reset physical stats; continue the same saved story node and run state."),
+], [1.35, 5.8])
+callout("Continuation contract", "Ending a run closes the workout, not the campaign. The next run starts from zero physically and from the saved checkpoint narratively.")
+
 # 18 Components
 page_break()
 title_block("17 / Component language", "Fewer components. Stronger states.", "A coherent MVP can be built from a small, rigorously specified set. Each component must have a reason to exist during motion.")
@@ -742,6 +759,8 @@ data_table(["Component", "Required states", "Notes"], [
     ("Runner marker", "moving / stopped / uncertain GPS", "Direction-aware; uncertainty shown as radius, not alarm."),
     ("Objective label", "enter / active / resolved", "One sentence; auto-dismiss after comprehension window."),
     ("Audio presence", "speaking / ambience / buffering / fallback", "Never a chat bubble or assistant avatar."),
+    ("Pause sheet", "paused / resuming / ending", "Resume is primary; ending names the summary destination."),
+    ("Early-run summary", "saved / continuing", "Run facts first, then the named story checkpoint."),
     ("Consequence card", "positive / adverse / unresolved", "Same structure and dignity across outcomes."),
     ("Metric cluster", "default / challenge / safety", "Maximum one primary and two secondary values."),
 ], [1.35, 2.25, 3.55])
@@ -815,7 +834,7 @@ data_table(["Reject if…", "Because…"], [
     ("Failure is framed as a score loss or retry prompt.", "Consequence has become punishment."),
     ("World art determines button colors or core navigation.", "The platform loses learned consistency."),
     ("Copy sounds motivational, epic or generic.", "The authored voice has been replaced by product hype."),
-    ("The recap leads with calories, pace or badges.", "The run did not become a story."),
+    ("A completed-story recap leads with calories, pace or badges.", "The run did not become a story; stats-first treatment is reserved for an early-run summary."),
 ], [3.45, 3.7])
 heading("MVP handoff tokens", 2)
 paragraph("Ink #0B0C0E  /  Paper #F4F2ED  /  Torch #FF4F2E  /  Torch Dark #C92D14  /  Ash #686A70  /  Line #D8D6D0", size=9, color=INK, bold=True, after=7)

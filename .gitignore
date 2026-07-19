@@ -1,0 +1,38 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Server runtime data
+server/data/audio-cache/
+server/data/*.json
+
+# OS / IDE
+.DS_Store
+*.pem
+.idea/
+.vscode/
+
+# Test / coverage
+coverage/
+
+# Logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# Expo / mobile (also covered by mobile/.gitignore)
+mobile/.expo/
+mobile/dist/
+mobile/dist-*/
+mobile/web-build/
+mobile/expo-env.d.ts

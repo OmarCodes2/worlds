@@ -1,0 +1,289 @@
+[
+  {
+    "id": "root-blood-in-the-chapel-l07-sfx",
+    "nodeTitle": "Root — Blood in the Chapel",
+    "source": "Garrick’s sword tears free of its leather scabbard.",
+    "durationSeconds": 2.5,
+    "prompt": "Extreme close Foley of an enraged medieval fighter violently drawing a heavy longsword from a tight, worn leather scabbard in one fast motion. A harsh steel-on-leather scrape, a sharp metal guard ring, and the blade slicing into open air. Dry ruined chapel reflections, no footsteps, no voices, no music, no impact."
+  },
+  {
+    "id": "choice-a-keep-edric-alive-l01-sfx",
+    "nodeTitle": "Choice A — Keep Edric alive",
+    "source": "Rowan’s boot grinds across wet stone. Steel stops a breath from cloth.",
+    "durationSeconds": 2.5,
+    "prompt": "Close action Foley: one leather boot plants and grinds sharply across wet grit on stone, then a moving sword stops abruptly inches from heavy wool clothing with a short air cut and faint fabric flutter. No impact, no dialogue, no music."
+  },
+  {
+    "id": "choice-a-keep-edric-alive-l03-sfx",
+    "nodeTitle": "Choice A — Keep Edric alive",
+    "source": "After a long beat, steel slides home. Four sets of boots leave the chapel.",
+    "durationSeconds": 5,
+    "prompt": "Begin with two seconds of tense chapel silence. A medieval sword slides back into a leather scabbard with controlled reluctance. Then four distinct sets of leather boots begin walking away together across wet stone and recede into a narrow passage. No speech, no music."
+  },
+  {
+    "id": "choice-a-keep-edric-alive-l08-sfx",
+    "nodeTitle": "Choice A — Keep Edric alive",
+    "source": "Their steps enter a junction: rushing water to the left, hollow wind to the right.",
+    "durationSeconds": 6,
+    "prompt": "Binaural underground junction: four sets of footsteps approach center and slow. From the far left, forceful water rushes through a low stone channel. From the far right, hollow wind moans up an empty wooden stair and bell shaft. Keep left and right sources clearly separated, no music, no voices."
+  },
+  {
+    "id": "choice-b-let-garrick-kill-edric-l01-sfx",
+    "nodeTitle": "Choice B — Let Garrick kill Edric",
+    "source": "A sword cuts the air in one hard swing. Edric’s severed head drops onto the chapel floor.",
+    "durationSeconds": 3,
+    "prompt": "One fast, forceful medieval sword swing cutting cleanly through the air, immediately followed by a severed human head striking wet chapel stone with a heavy compact thud and one short roll. Keep it physically direct and restrained: no gore splatter, no scream, no body collapse, no bell, no music, no extra footsteps."
+  },
+  {
+    "id": "choice-b-let-garrick-kill-edric-l05-sfx",
+    "nodeTitle": "Choice B — Let Garrick kill Edric",
+    "source": "Garrick searches through Edric’s coat and clothing.",
+    "durationSeconds": 4,
+    "prompt": "Close, realistic clothing-search Foley on a stone chapel floor: rough hands urgently pat and pull through a dead man’s heavy wool coat, leather vest, belt pouch, and inner lining. Layer coarse fabric rustling, leather creaks, one small buckle knock, and the faint metallic touch of a hidden brass key being found at the end. No voices, body movement, gore, footsteps, or music."
+  },
+  {
+    "id": "a1-the-flooded-passage-pace-showcase-l01-sfx",
+    "nodeTitle": "A1 — The flooded passage (pace showcase)",
+    "source": "A keeper chain snaps overhead. Water strikes the channel in one heavy sheet.",
+    "durationSeconds": 5,
+    "prompt": "Inside a low medieval stone water channel: an old iron keeper chain strains overhead, then snaps violently link by link. A sluice releases immediately and a single heavy wall of water slams into the channel, spreading into a fast current. No voices, bells, or music."
+  },
+  {
+    "id": "a1-the-flooded-passage-pace-showcase-l03-sfx",
+    "nodeTitle": "A1 — The flooded passage (pace showcase)",
+    "source": "Far ahead: one hollow knock.",
+    "durationSeconds": 2.5,
+    "prompt": "One isolated hollow iron knock far ahead inside a long flooded stone tunnel. The impact is low, heavy, and mechanical, with a long narrow echo returning over rushing water. Exactly one knock, no bell tone, no voices, no music."
+  },
+  {
+    "id": "a1-the-flooded-passage-pace-showcase-l07-sfx",
+    "nodeTitle": "A1 — The flooded passage (pace showcase)",
+    "source": "A second iron knock rolls back through the channel.",
+    "durationSeconds": 3,
+    "prompt": "The second warning knock from a distant iron grate: one heavier mechanical impact than before, reverberating backward through a long wet stone channel while the water current is louder and closer. Exactly one knock, no music or voices."
+  },
+  {
+    "id": "a2-the-guard-stair-cadence-trial-l01-sfx",
+    "nodeTitle": "A2 — The guard stair / cadence trial",
+    "source": "Wind turns the empty bell shaft into a low flute. Loose boards answer under Garrick’s weight.",
+    "durationSeconds": 6,
+    "prompt": "An empty vertical stone bell shaft resonating like a low natural flute as wind moves through narrow openings. In the foreground, old wet wooden stair boards flex and creak under one cautious adult’s weight. Deep drop below, no bell strike, no voices, no music."
+  },
+  {
+    "id": "a2-the-guard-stair-cadence-trial-l06-sfx",
+    "nodeTitle": "A2 — The guard stair / cadence trial",
+    "source": "Three deliberate footfalls travel ahead: step, step—stillness—step.",
+    "durationSeconds": 4,
+    "prompt": "Cadence reference on an unstable wooden stair over a shaft: one pair of leather boots performs exactly step, step, a clearly held pause, then step. Measured and deliberate, with each board giving a different small creak. No extra footsteps, voice, or music."
+  },
+  {
+    "id": "a2-the-guard-stair-cadence-trial-l08-sfx",
+    "nodeTitle": "A2 — The guard stair / cadence trial",
+    "source": "Step, step—stillness—step. A board groans somewhere below.",
+    "durationSeconds": 5,
+    "prompt": "Repeat the exact cadence on rotten wooden stairs: step, step, held silence, step. After the final footfall, a separate support board far below emits a long stressed groan into the bell shaft. No collapse yet, no voice, no music."
+  },
+  {
+    "id": "b1-search-the-dead-stop-trial-l01-sfx",
+    "nodeTitle": "B1 — Search the dead / stop trial",
+    "source": "Edric’s coat drags over grit. Above, a shuttered patrol lantern clicks open and begins its slow sweep.",
+    "durationSeconds": 6,
+    "prompt": "Close Foley of a heavy wool coat with a body inside being dragged briefly over gritty chapel stone. Above, a metal patrol-lantern shutter clicks open; its small geared carriage begins a slow left-to-right traverse with faint chain ticks. No voices, light hum, or music."
+  },
+  {
+    "id": "b1-search-the-dead-stop-trial-l07-sfx",
+    "nodeTitle": "B1 — Search the dead / stop trial",
+    "source": "Light scrapes over stone, passes, then fades behind a pillar.",
+    "durationSeconds": 5,
+    "prompt": "Represent a moving patrol light through its physical mechanism: a shuttered metal lantern carriage rasps slowly along an overhead rail from left to right, chain ticking across stone acoustics, then becomes muffled and fades as it passes behind a thick pillar. No magical light sound, no voices, no music."
+  },
+  {
+    "id": "b2-force-the-lantern-gate-pace-trial-l02-sfx",
+    "nodeTitle": "B2 — Force the lantern gate / pace trial",
+    "source": "A brass keeper key unlocks the Lantern Gate. Deep iron gears engage and lift the gate only halfway.",
+    "durationSeconds": 6,
+    "prompt": "Close Foley of a heavy brass keeper key inserted and turned decisively in an ancient iron lock. The lock releases with a clear mechanical clack; deep pre-industrial gears engage behind stone and strain a massive iron portcullis upward before stalling exactly halfway with a loaded metal groan. No voices, bells, music, or modern machinery."
+  },
+  {
+    "id": "b2-force-the-lantern-gate-pace-trial-l09-sfx",
+    "nodeTitle": "B2 — Force the lantern gate / pace trial",
+    "source": "Rowan drives the treadle into a hard, steady rhythm. Mara runs ahead while Garrick’s boots follow close behind.",
+    "durationSeconds": 6,
+    "prompt": "A clear sustained pace trial in a stone gate corridor: Rowan’s boots drive a heavy floor treadle in a hard regular running rhythm, each press turning deep iron gears and lifting a counterweight chain. Mara’s lighter boots run several steps ahead while Garrick’s heavier boots remain close behind Rowan. Maintain spatial front-middle-rear separation and an even cadence. No voices, music, bells, or unrelated ambience."
+  },
+  {
+    "id": "a1a-through-the-grate-l01-sfx",
+    "nodeTitle": "A1A — Through the grate",
+    "source": "The third iron knock begins.",
+    "durationSeconds": 3,
+    "prompt": "The third and final distant iron-grate warning: one urgent hollow impact beginning with a hard mechanical strike and blooming into a long wet tunnel echo over a strong current. Exactly one knock, heavier than the first two, no voices or music."
+  },
+  {
+    "id": "a1a-through-the-grate-l03-sfx",
+    "nodeTitle": "A1A — Through the grate",
+    "source": "Four bodies clear stone. Iron crashes behind them and the flood shears away below.",
+    "durationSeconds": 6,
+    "prompt": "Fast sequence in a flooded stone passage: four people in boots and wet clothing scramble under a descending grate, the heavy iron grate crashes into its socket immediately behind them, and redirected floodwater tears downward into a deep channel. No voices, music, or combat sounds."
+  },
+  {
+    "id": "a1a-through-the-grate-l06-sfx",
+    "nodeTitle": "A1A — Through the grate",
+    "source": "Ahead, the Lantern Vault mechanism ticks backward—three bright clicks, one dull.",
+    "durationSeconds": 4,
+    "prompt": "A precise ancient lock mechanism heard ahead in a quiet stone vault: three small bright brass clicks in reverse sequence, followed by one lower dull iron click. Repeat the four-part pattern once only. Clean mechanical detail, no clock, voices, or music."
+  },
+  {
+    "id": "a1b-the-current-takes-mara-l01-sfx",
+    "nodeTitle": "A1B — The current takes Mara",
+    "source": "The third iron knock lands too soon. Water folds Mara under without a cry.",
+    "durationSeconds": 5,
+    "prompt": "An urgent third iron warning knock echoes through a flooded tunnel; before its decay ends, a lateral surge of water hits an adult runner and submerges her completely. Heavy splash, clothing swallowed by current, no scream, no speech, no music."
+  },
+  {
+    "id": "a1b-the-current-takes-mara-l06-sfx",
+    "nodeTitle": "A1B — The current takes Mara",
+    "source": "Edric dives. Leather draws taut; Garrick’s boots skid, catch, and hold.",
+    "durationSeconds": 5,
+    "prompt": "Rescue Foley in rushing water: one clothed person dives hard into the current, a leather belt or strap whips tight under load, and another adult’s boots skid across wet stone before finding a groove and holding. Emphasize tension and weight, no voices or music."
+  },
+  {
+    "id": "a1b-the-current-takes-mara-l07-sfx",
+    "nodeTitle": "A1B — The current takes Mara",
+    "source": "Mara breaks the surface coughing. The grate slams ahead of them.",
+    "durationSeconds": 5,
+    "prompt": "A woman bursts above violent floodwater with two involuntary coughs and gasping breath; several metres ahead, a massive iron grate slams shut in stone and blocks the route. Natural human nonverbal coughing only, no words, no music."
+  },
+  {
+    "id": "a2a-the-boards-hold-l01-sfx",
+    "nodeTitle": "A2A — The boards hold",
+    "source": "The final pattern lands clean: step, step—stillness—step. The boards settle.",
+    "durationSeconds": 5,
+    "prompt": "Successful cadence on old wooden stairs: leather boots land step, step, hold a clean pause, then one final step. The stressed boards creak briefly and settle safely without cracking. Deep bell-shaft space, no voices or music."
+  },
+  {
+    "id": "a2a-the-boards-hold-l03-sfx",
+    "nodeTitle": "A2A — The boards hold",
+    "source": "A small bronze disc spins beneath Rowan’s heel.",
+    "durationSeconds": 3,
+    "prompt": "A boot heel nudges a small bronze signal token on dry wood. The disc spins rapidly on its edge, wobbles in tightening circles, and settles flat with a delicate metallic ring. Close Foley, no other sounds or music."
+  },
+  {
+    "id": "a2a-the-boards-hold-l09-sfx",
+    "nodeTitle": "A2A — The boards hold",
+    "source": "The cracked bell note travels down the shaft. The token answers with a faint metallic ring.",
+    "durationSeconds": 6,
+    "prompt": "A damaged bronze bell toll sounds high above and travels downward through a deep empty shaft. Its resonance sympathetically vibrates a small bronze token nearby, producing one faint answering ring after the main toll. Clear cause and response, no music or voices."
+  },
+  {
+    "id": "a2b-the-stair-breaks-l01-sfx",
+    "nodeTitle": "A2B — The stair breaks",
+    "source": "A foot lands between beats. Timber splits and a bronze token skips toward the shaft.",
+    "durationSeconds": 4,
+    "prompt": "One mistimed boot lands heavily on a rotten stair board. Timber splits sharply along the grain, and a hidden bronze token pops free, bouncing and skipping across boards toward an open shaft. No fall yet, no voices or music."
+  },
+  {
+    "id": "a2b-the-stair-breaks-l03-sfx",
+    "nodeTitle": "A2B — The stair breaks",
+    "source": "The board drops. Garrick goes with it.",
+    "durationSeconds": 3,
+    "prompt": "A broken wooden stair board tears free and falls into a deep bell shaft as a fully armoured adult slips through the opening with it. Wood impacts the shaft walls below; clothing and gear scrape the edge. No scream, no music."
+  },
+  {
+    "id": "a2b-the-stair-breaks-l05-sfx",
+    "nodeTitle": "A2B — The stair breaks",
+    "source": "Leather snaps tight. Edric’s shoulder strikes the rail; below, the token rings once and is gone.",
+    "durationSeconds": 5,
+    "prompt": "A leather wrist strap or sleeve snaps taut under a person’s full weight. Another adult’s shoulder slams into a wooden rail with a painful impact. Far below, a falling bronze token strikes stone once with a tiny ring, then disappears into depth. No speech or music."
+  },
+  {
+    "id": "a2b-the-stair-breaks-l09-sfx",
+    "nodeTitle": "A2B — The stair breaks",
+    "source": "Garrick rolls onto the landing. Edric cradles two bent fingers.",
+    "durationSeconds": 3.5,
+    "prompt": "Close aftermath Foley: a heavy armoured man is hauled over a broken edge and rolls onto a wooden landing, gear settling. Beside him, injured fingers shift with small leather-glove and joint sounds, followed by restrained breathing. No dialogue, no music."
+  },
+  {
+    "id": "b1a-the-map-in-the-lining-l01-sfx",
+    "nodeTitle": "B1A — The map in the lining",
+    "source": "The patrol lantern clicks away. Cloth tears once in the dark.",
+    "durationSeconds": 4,
+    "prompt": "An overhead metal patrol-lantern shutter mechanism clicks and recedes behind stone. In the resulting quiet, close heavy wool coat lining is torn open with one careful rip. Intimate Foley, no voices, magical light sound, or music."
+  },
+  {
+    "id": "b1a-the-map-in-the-lining-l04-sfx",
+    "nodeTitle": "B1A — The map in the lining",
+    "source": "The lantern sweeps back. Everyone goes still; paper trembles in Garrick’s hand.",
+    "durationSeconds": 5,
+    "prompt": "A metal patrol-lantern carriage returns overhead, chain ticks and shutter rattle moving across the room. All footsteps and clothing stop abruptly. In extreme close-up, a small sheet of waxed paper trembles almost silently in a tense hand. No speech or music."
+  },
+  {
+    "id": "b1a-the-map-in-the-lining-l05-sfx",
+    "nodeTitle": "B1A — The map in the lining",
+    "source": "Darkness returns. The map unfolds.",
+    "durationSeconds": 3.5,
+    "prompt": "The patrol-lantern mechanism recedes and becomes muffled behind stone. In the safe quiet, a tightly folded waxed-paper map is opened carefully in several crisp folds close to the listener. No voices, music, or magical darkness sound."
+  },
+  {
+    "id": "b1a-the-map-in-the-lining-l11-sfx",
+    "nodeTitle": "B1A — The map in the lining",
+    "source": "The patrol lantern begins another turn.",
+    "durationSeconds": 4,
+    "prompt": "A distant patrol-lantern rotation begins again: metal shutter clicks open, a small chain catches, and a slow geared carriage starts moving toward the listener across an overhead stone track. Growing mechanical presence, no voices or music."
+  },
+  {
+    "id": "b1b-empty-hands-l01-sfx",
+    "nodeTitle": "B1B — Empty hands",
+    "source": "A boot shifts before the lantern passes. Its shutter snaps fully open.",
+    "durationSeconds": 3.5,
+    "prompt": "A nervous leather boot shifts accidentally on chapel grit during silence. Immediately overhead, a metal patrol-lantern shutter reacts by snapping fully open with a hard spring click and fast carriage stop. No voices, magical light sound, or music."
+  },
+  {
+    "id": "b1b-empty-hands-l03-sfx",
+    "nodeTitle": "B1B — Empty hands",
+    "source": "The chapel door takes one armoured blow.",
+    "durationSeconds": 2.5,
+    "prompt": "One massive armoured shoulder strike against the outside of an old reinforced wooden chapel door. Deep wood boom, iron hinges and brace shudder, dust falls, but the door holds. Exactly one blow, no voices or music."
+  },
+  {
+    "id": "b1b-empty-hands-l06-sfx",
+    "nodeTitle": "B1B — Empty hands",
+    "source": "A second blow cracks the door brace.",
+    "durationSeconds": 3,
+    "prompt": "A second, harder armoured impact hits an old chapel door. The wooden cross-brace splits visibly with a sharp crack, iron fittings jump, and broken fibres continue creaking under load. Exactly one impact, no voices or music."
+  },
+  {
+    "id": "b1b-empty-hands-l08-sfx",
+    "nodeTitle": "B1B — Empty hands",
+    "source": "A rusted floor hatch opens. Wind climbs out carrying the cracked bell’s low vibration.",
+    "durationSeconds": 6,
+    "prompt": "A rusted iron floor hatch is dragged open on protesting hinges. Cold wind rises from a deep vertical shaft below, carrying the low sympathetic vibration of the distant cracked siege bell through stone. Dark vertical depth, no voices or music."
+  },
+  {
+    "id": "b1b-empty-hands-l12-sfx",
+    "nodeTitle": "B1B — Empty hands",
+    "source": "The door bursts inward as the hatch closes overhead.",
+    "durationSeconds": 4,
+    "prompt": "Two simultaneous but clearly staged events: an iron floor hatch slams closed directly overhead, then a reinforced chapel door bursts inward farther away with exploding wood, iron hardware, and armoured momentum. Stone-room impact, no voices or music."
+  },
+  {
+    "id": "b2a-the-unread-ledger-l01-sfx",
+    "nodeTitle": "B2A — The unread ledger",
+    "source": "The treadle holds its rhythm. Mara clears the gate, Rowan follows, and Garrick dives through just before the iron crashes safely behind them.",
+    "durationSeconds": 6,
+    "prompt": "Successful medieval gate crossing in one clear sequence: a floor treadle maintains a fast steady boot rhythm while gears and counterweight chain hold an iron portcullis high; Mara’s boots clear first, Rowan’s second, and Garrick’s heavy boots dive through last. The portcullis crashes safely into stone immediately behind Garrick. No voices, injuries, music, or patrol sounds."
+  },
+  {
+    "id": "b2a-the-unread-ledger-l04-sfx",
+    "nodeTitle": "B2A — The unread ledger",
+    "source": "The brass key unlocks an inner cabinet. Hundreds of thin metal ledger leaves unfold with a dry metallic whisper.",
+    "durationSeconds": 6,
+    "prompt": "Inside a silent stone Lantern Vault, a heavy brass keeper key enters and unlocks a smaller inner ledger cabinet with precise pins and one clean release. The cabinet opens and hundreds of extremely thin engraved metal ledger leaves mechanically fan outward, brushing together in a dry delicate metallic whisper. No voices, magic shimmer, music, or gate crash."
+  },
+  {
+    "id": "b2b-garrick-is-cut-off-l01-sfx",
+    "nodeTitle": "B2B — Garrick is cut off",
+    "source": "The Lantern Gate crashes down between Rowan and Garrick.",
+    "durationSeconds": 4,
+    "prompt": "An extremely loud massive iron Lantern Gate drops at full speed and crashes into a deep stone socket at close range. One overwhelming portcullis impact with violent iron resonance, stone vibration, and a long heavy decay through a narrow medieval corridor. Make the sudden barrier feel physically final. No chain prelude, footsteps, voices, combat, or music."
+  }
+]

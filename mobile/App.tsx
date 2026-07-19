@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Modal,
+  Image,
   Platform,
   Pressable,
   SafeAreaView,
@@ -15,6 +15,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  useAudioRecorder,
+} from 'expo-audio';
+import * as Device from 'expo-device';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
+import {
+  getGreywatchStory,
+  resolveRun,
+  resolveVocalDecision,
+  startRun,
+  transcribeRecordedAnswer,
+  type StoryLine,
+  type StoryNode,
+} from './src/api';
 
 const C = {
   ink: '#0B0C0E',
@@ -27,13 +49,16 @@ const C = {
   moss: '#234C3B',
   sky: '#536DFE',
   amber: '#F3A712',
+  success: '#198754',
+  danger: '#D92D20',
 };
 
 type Tab = 'home' | 'worlds' | 'journey' | 'you';
 type Screen = Tab | 'detail' | 'setup' | 'run' | 'recap' | 'history' | 'settings';
 
 const worlds = [
-  { title: 'The North Road', genre: 'Worlds Original', tone: 'A kingdom at dusk', colors: ['#151B1A', '#4D6C55'] as const },
+  { title: 'Greywatch', genre: 'Worlds Original', tone: 'Blood in the chapel', colors: ['#17100F', '#613329'] as const },
+  { title: 'The North Road', genre: 'Future World', tone: 'A kingdom at dusk', colors: ['#151B1A', '#4D6C55'] as const },
   { title: 'Signal Lost', genre: 'Future World', tone: 'Deep-space survival', colors: ['#101322', '#536DFE'] as const },
   { title: 'Blackwater', genre: 'Creator World', tone: 'Coastal mystery', colors: ['#111B20', '#315665'] as const },
 ];
@@ -42,6 +67,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const [tab, setTab] = useState<Tab>('home');
   const [runLength, setRunLength] = useState('30 min');
+  const [targetPace, setTargetPace] = useState('6:00 /km');
 
   const goTab = (next: Tab) => {
     setTab(next);
@@ -63,12 +89,20 @@ export default function App() {
         <PreRun
           length={runLength}
           onLength={setRunLength}
+          targetPace={targetPace}
+          onTargetPace={setTargetPace}
           onBack={() => setScreen('detail')}
           onStart={() => setScreen('run')}
         />
       )}
-      {screen === 'run' && <ActiveRun onFinish={() => setScreen('recap')} />}
-      {screen === 'recap' && <Recap onDone={() => goTab('home')} />}
+      {screen === 'run' && (
+        <ActiveRun
+          targetPace={targetPace}
+          onBack={() => setScreen('setup')}
+          onFinish={() => setScreen('recap')}
+        />
+      )}
+      {screen === 'recap' && <Recap onDone={() => goTab('home')} onNewRun={() => setScreen('setup')} />}
       {screen === 'history' && <RunHistory onBack={() => setScreen('you')} onRun={() => setScreen('recap')} />}
       {screen === 'settings' && <Settings onBack={() => setScreen('you')} />}
       {showTabs && <TabBar active={tab} onSelect={goTab} />}
@@ -104,10 +138,10 @@ function Home({ onContinue, onWorld }: { onContinue: () => void; onWorld: () => 
           <View style={styles.ridgeFront} />
           <View style={styles.heroShade} />
           <View style={styles.heroCopy}>
-            <Text style={styles.heroEyebrow}>CURRENT JOURNEY · THE NORTH ROAD</Text>
-            <Text style={styles.heroTitle}>Reach the bell tower before dark.</Text>
-            <Text style={styles.heroState}>Mara is injured. The northern gate is closed.</Text>
-            <PrimaryButton label="Continue · 30 min" onPress={onContinue} />
+            <Text style={styles.heroEyebrow}>PLAYABLE STORY · GREYWATCH</Text>
+            <Text style={styles.heroTitle}>Decide whether Edric leaves the chapel alive.</Text>
+            <Text style={styles.heroState}>Garrick has drawn his sword. Mara is begging you to act.</Text>
+            <PrimaryButton label="Start a new run" onPress={onContinue} />
           </View>
         </LinearGradient>
       </Pressable>
@@ -117,15 +151,15 @@ function Home({ onContinue, onWorld }: { onContinue: () => void; onWorld: () => 
         <WorldArt colors={worlds[0].colors} compact />
         <View style={styles.featureCopy}>
           <Text style={styles.cardEyebrow}>WORLDS ORIGINAL</Text>
-          <Text style={styles.cardTitle}>The North Road</Text>
-          <Text style={styles.bodyMuted}>A fugitive princess. One road left north.</Text>
+          <Text style={styles.cardTitle}>Greywatch</Text>
+          <Text style={styles.bodyMuted}>A murder. A living key. One choice before the blade falls.</Text>
         </View>
         <Text style={styles.chevron}>›</Text>
       </Pressable>
 
       <View style={styles.consequence}>
         <Text style={styles.cardEyebrow}>LAST CONSEQUENCE</Text>
-        <Text style={styles.consequenceText}>You chose the forest. Ilan remembers.</Text>
+        <Text style={styles.consequenceText}>No run yet. Greywatch is waiting.</Text>
       </View>
     </Page>
   );
@@ -139,8 +173,8 @@ function Worlds({ onWorld }: { onWorld: () => void }) {
       <SectionTitle title="Worlds Originals" action="Featured" />
       <Pressable onPress={onWorld}>
         <WorldArt colors={worlds[0].colors} large>
-          <Text style={styles.artEyebrow}>A KINGDOM AT DUSK</Text>
-          <Text style={styles.artTitle}>The North Road</Text>
+          <Text style={styles.artEyebrow}>BLOOD IN THE CHAPEL</Text>
+          <Text style={styles.artTitle}>Greywatch</Text>
         </WorldArt>
       </Pressable>
       <SectionTitle title="Coming next" action="Preview" />
@@ -170,18 +204,17 @@ function WorldDetail({ onBack, onEnter }: { onBack: () => void; onEnter: () => v
           </Pressable>
           <View style={styles.detailArtCopy}>
             <Text style={styles.artEyebrow}>WORLDS ORIGINAL</Text>
-            <Text style={styles.detailTitle}>The North Road</Text>
+            <Text style={styles.detailTitle}>Greywatch</Text>
           </View>
         </View>
         <View style={styles.detailBody}>
-          <Text style={styles.hook}>The crown has fallen. Before dawn, decide who rises in its place.</Text>
+          <Text style={styles.hook}>Edric murdered Thomas. Garrick wants his blood. Mara says only Edric can open the Lantern Vault.</Text>
           <Pressable style={styles.preview}>
             <View style={styles.playCircle}><Text style={styles.play}>▶</Text></View>
             <View style={styles.grow}>
               <Text style={styles.previewTitle}>Hear the world</Text>
-              <Text style={styles.meta}>Voice preview · 24 sec</Text>
+              <Text style={styles.meta}>Prerecorded cast · Full branching scene</Text>
             </View>
-            <View style={styles.wave}><Text style={styles.waveText}>╵╷│╵╷│╵</Text></View>
           </Pressable>
           <SectionTitle title="Your movement matters" />
           <View style={styles.mechanics}>
@@ -191,7 +224,7 @@ function WorldDetail({ onBack, onEnter }: { onBack: () => void; onEnter: () => v
           </View>
           <View style={styles.creditBlock}>
             <Text style={styles.cardEyebrow}>AUTHORED WORLD</Text>
-            <Text style={styles.body}>Created for Worlds · Featuring Mara, Ilan and The Warden</Text>
+            <Text style={styles.body}>Created for Worlds · Featuring Mara, Garrick, Edric and Rowan</Text>
           </View>
           <PrimaryButton label="Enter this world" onPress={onEnter} />
         </View>
@@ -203,27 +236,31 @@ function WorldDetail({ onBack, onEnter }: { onBack: () => void; onEnter: () => v
 function PreRun({
   length,
   onLength,
+  targetPace,
+  onTargetPace,
   onBack,
   onStart,
 }: {
   length: string;
   onLength: (value: string) => void;
+  targetPace: string;
+  onTargetPace: (value: string) => void;
   onBack: () => void;
   onStart: () => void;
 }) {
   return (
     <Page noTab>
-      <Header eyebrow="THE NORTH ROAD" title="Shape this run." onBack={onBack} />
-      <Text style={styles.intro}>We’ll adapt the next story beat to the time and effort you choose.</Text>
+      <Header eyebrow="GREYWATCH · BLOOD IN THE CHAPEL" title="Shape this run." onBack={onBack} />
+      <Text style={styles.intro}>Set the pace that “hold it” means for this run. Demo controls replace GPS.</Text>
       <FormSection title="Run length" note="30 min recommended">
         <Pills values={['15 min', '30 min', '45 min']} selected={length} onSelect={onLength} />
       </FormSection>
-      <FormSection title="Intensity" note="In physical terms">
-        <Pills values={['Recovery', 'Steady', 'Challenge']} selected="Steady" onSelect={() => {}} />
+      <FormSection title="Desired pace" note="Per kilometre">
+        <Pills values={['5:30 /km', '6:00 /km', '6:30 /km']} selected={targetPace} onSelect={onTargetPace} />
       </FormSection>
       <View style={styles.readiness}>
         <ReadinessRow label="Headphones" value="Connected" ready />
-        <ReadinessRow label="Location" value="GPS ready" ready />
+        <ReadinessRow label="Movement" value="Demo controls" ready />
         <ReadinessRow label="Audio" value="Volume safe" ready />
       </View>
       <View style={styles.safetyNote}>
@@ -237,70 +274,608 @@ function PreRun({
   );
 }
 
-function ActiveRun({ onFinish }: { onFinish: () => void }) {
+function paceToSeconds(pace: string) {
+  const match = pace.match(/(\d+):(\d+)/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : 360;
+}
+
+function formatPace(seconds: number) {
+  const safe = Math.max(180, Math.min(900, seconds));
+  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, '0')}`;
+}
+
+function formatElapsed(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
+    : `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
+const PACE_VARIATION_SECONDS = [12, -8, 18, -14, 6, -19, 15, -4];
+
+type RunPhase = 'loading' | 'playing' | 'awaiting' | 'resolving' | 'listening' | 'complete' | 'error';
+
+function ActiveRun({
+  targetPace,
+  onBack,
+  onFinish,
+}: {
+  targetPace: string;
+  onBack: () => void;
+  onFinish: () => void;
+}) {
+  const targetPaceSeconds = paceToSeconds(targetPace);
   const [paused, setPaused] = useState(false);
+  const [captions, setCaptions] = useState(true);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [distanceKm, setDistanceKm] = useState(0);
+  const [phase, setPhase] = useState<RunPhase>('loading');
+  const [runId, setRunId] = useState<string | null>(null);
+  const [node, setNode] = useState<StoryNode | null>(null);
+  const [lineIndex, setLineIndex] = useState(0);
+  const [currentPace, setCurrentPace] = useState(targetPaceSeconds);
+  const [transcript, setTranscript] = useState('');
+  const [lastResult, setLastResult] = useState('');
+  const [error, setError] = useState('');
+  const currentLine: StoryLine | undefined = node?.lines[lineIndex];
+  const isIOSSimulator = Platform.OS === 'ios' && !Device.isDevice;
+  const simulatorRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // Keep each remote line as the player's initial source. Replacing a shared,
+  // download-first player during AVFoundation's completion callback can drop
+  // the next short line on iOS.
+  const player = useAudioPlayer(currentLine?.audioUrl ?? null, { updateInterval: 150 });
+  const playback = useAudioPlayerStatus(player);
+  const startedLine = useRef('');
+  const heardPlayingLine = useRef('');
+  const finishedLine = useRef('');
+  const latestTranscript = useRef('');
+  const speechSubmitted = useRef(false);
+  const speechFailed = useRef(false);
+  const speechCancelledByControl = useRef(false);
+  const speechEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeElapsedMs = useRef(0);
+  const distanceKmRef = useRef(0);
+  const currentPaceRef = useRef(currentPace);
+  const variationIndex = useRef(0);
+
+  useEffect(() => {
+    currentPaceRef.current = currentPace;
+  }, [currentPace]);
+
+  useEffect(() => {
+    let lastTickAt = Date.now();
+    const telemetryTimer = setInterval(() => {
+      const now = Date.now();
+      const intervalMs = now - lastTickAt;
+      lastTickAt = now;
+      if (paused) return;
+
+      activeElapsedMs.current += intervalMs;
+      distanceKmRef.current += (intervalMs / 1000) / currentPaceRef.current;
+      setElapsedSeconds(Math.floor(activeElapsedMs.current / 1000));
+      setDistanceKm(distanceKmRef.current);
+    }, 250);
+
+    return () => clearInterval(telemetryTimer);
+  }, [paused]);
+
+  useEffect(() => {
+    if (paused) return;
+    const paceTimer = setInterval(() => {
+      const variation = PACE_VARIATION_SECONDS[variationIndex.current % PACE_VARIATION_SECONDS.length];
+      variationIndex.current += 1;
+      setCurrentPace(Math.max(180, Math.min(900, targetPaceSeconds + variation)));
+    }, 5000);
+
+    return () => clearInterval(paceTimer);
+  }, [paused, targetPaceSeconds]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([getGreywatchStory(), startRun(targetPaceSeconds)])
+      .then(([story, run]) => {
+        if (!active) return;
+        const opening = story.nodes.find((candidate) => candidate.id === run.currentNodeId);
+        if (!opening) throw new Error('The opening Greywatch scene is missing.');
+        setRunId(run.id);
+        setNode(opening);
+        setLineIndex(0);
+        setPhase('loading');
+      })
+      .catch((reason) => {
+        if (!active) return;
+        setError(reason instanceof Error ? reason.message : 'Could not start this run.');
+        setPhase('error');
+      });
+    return () => {
+      active = false;
+      if (speechEndTimer.current) clearTimeout(speechEndTimer.current);
+      ExpoSpeechRecognitionModule.abort();
+    };
+  }, [targetPaceSeconds]);
+
+  useEffect(() => {
+    if (!currentLine) return;
+    startedLine.current = '';
+    heardPlayingLine.current = '';
+    finishedLine.current = '';
+    setPhase('loading');
+  }, [currentLine?.id]);
+
+  useEffect(() => {
+    if (!currentLine) return;
+    if (paused) return;
+    if (playback.isLoaded && phase === 'loading' && startedLine.current !== currentLine.id) {
+      startedLine.current = currentLine.id;
+      player.play();
+      setPhase('playing');
+    }
+    if (playback.playing && startedLine.current === currentLine.id) {
+      heardPlayingLine.current = currentLine.id;
+    }
+    if (
+      playback.didJustFinish
+      && heardPlayingLine.current === currentLine.id
+      && finishedLine.current !== currentLine.id
+    ) {
+      finishedLine.current = currentLine.id;
+      if (node && lineIndex < node.lines.length - 1) {
+        setLineIndex((value) => value + 1);
+      } else {
+        setPhase('awaiting');
+      }
+    }
+  }, [playback.isLoaded, playback.playing, playback.didJustFinish, currentLine?.id, lineIndex, node, paused, phase]);
+
+  useEffect(() => {
+    if (!currentLine || currentLine.audioUrl || !node?.generated || paused) return;
+    startedLine.current = currentLine.id;
+    heardPlayingLine.current = currentLine.id;
+    setPhase('playing');
+    const wordCount = currentLine.text.trim().split(/\s+/).length;
+    const readingTimeMs = Math.max(1800, Math.min(6000, wordCount * 260));
+    const fallbackTimer = setTimeout(() => {
+      if (finishedLine.current === currentLine.id) return;
+      finishedLine.current = currentLine.id;
+      if (lineIndex < node.lines.length - 1) {
+        setLineIndex((value) => value + 1);
+      } else {
+        setPhase('awaiting');
+      }
+    }, readingTimeMs);
+    return () => clearTimeout(fallbackTimer);
+  }, [currentLine?.audioUrl, currentLine?.id, lineIndex, node, paused]);
+
+  const enterNode = useCallback((nextNode: StoryNode, result: string) => {
+    setNode(nextNode);
+    setLineIndex(0);
+    setTranscript('');
+    setLastResult(result);
+    setError('');
+    setPhase('loading');
+  }, []);
+
+  const resolveMovement = useCallback(async (input: Record<string, unknown>) => {
+    if (!runId || phase !== 'awaiting') return;
+    setPhase('resolving');
+    try {
+      const response = await resolveRun(runId, input);
+      enterNode(response.nextNode, response.result);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The story could not react.');
+      setPhase('awaiting');
+    }
+  }, [enterNode, phase, runId]);
+
+  const submitTranscript = useCallback(async (spokenText: string) => {
+    if (!runId || !spokenText.trim()) return;
+    setTranscript(spokenText.trim());
+    setPhase('resolving');
+    try {
+      const response = await resolveVocalDecision(runId, spokenText.trim());
+      if (response.nextNode) {
+        enterNode(response.nextNode, response.choice.label);
+      } else {
+        setLastResult(response.choice.label);
+        setTranscript(response.transcript);
+        setPhase('complete');
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Your response was not understood.');
+      setPhase('awaiting');
+    }
+  }, [enterNode, runId]);
+
+  const submitTranscriptRef = useRef(submitTranscript);
+  useEffect(() => { submitTranscriptRef.current = submitTranscript; }, [submitTranscript]);
+
+  const submitLatestSpeech = useCallback(() => {
+    const spokenText = latestTranscript.current.trim();
+    if (!spokenText || speechSubmitted.current || speechFailed.current) return false;
+    speechSubmitted.current = true;
+    submitTranscriptRef.current(spokenText);
+    return true;
+  }, []);
+
+  useSpeechRecognitionEvent('start', () => {
+    speechSubmitted.current = false;
+    speechFailed.current = false;
+    speechCancelledByControl.current = false;
+    latestTranscript.current = '';
+    setPhase('listening');
+  });
+  useSpeechRecognitionEvent('result', (event) => {
+    const spokenText = event.results[0]?.transcript?.trim() ?? '';
+    if (spokenText) {
+      latestTranscript.current = spokenText;
+      setTranscript(spokenText);
+    }
+    if (event.isFinal && spokenText) submitLatestSpeech();
+  });
+  useSpeechRecognitionEvent('end', () => {
+    if (speechCancelledByControl.current) return;
+    // On iOS, stop() may end after delivering only an interim result. Give the
+    // native bridge a moment to deliver its last result, then submit whichever
+    // transcript the runner could see instead of silently resetting the choice.
+    if (speechEndTimer.current) clearTimeout(speechEndTimer.current);
+    speechEndTimer.current = setTimeout(() => {
+      if (submitLatestSpeech()) return;
+      setPhase((value) => value === 'listening' ? 'awaiting' : value);
+      if (!speechFailed.current && !latestTranscript.current.trim()) {
+        setError(
+          Platform.OS === 'ios' && !Device.isDevice
+            ? 'Simulator received no microphone audio. Choose Device → Sound → Sound Input → System, then try again.'
+            : 'I did not hear an answer. Tap Speak and try again.',
+        );
+      }
+    }, 250);
+  });
+  useSpeechRecognitionEvent('nomatch', () => {
+    if (speechCancelledByControl.current) return;
+    if (speechSubmitted.current) return;
+    speechFailed.current = true;
+    setError(
+      Platform.OS === 'ios' && !Device.isDevice
+        ? 'Simulator received no microphone audio. Choose Device → Sound → Sound Input → System, then try again.'
+        : 'I could not make out that answer. Tap Speak and try again.',
+    );
+    setPhase('awaiting');
+  });
+  useSpeechRecognitionEvent('error', (event) => {
+    if (speechCancelledByControl.current) return;
+    // iOS may report a late recognizer shutdown error after the visible
+    // transcript has already been accepted and sent to the director.
+    if (speechSubmitted.current) return;
+    speechFailed.current = true;
+    const message = event.message || `Speech recognition failed: ${event.error}`;
+    setError(
+      Platform.OS === 'ios' && !Device.isDevice && message.includes('209')
+        ? 'The iOS Simulator speech service did not start. Tap Speak to try again; private on-device recognition is available on a physical iPhone.'
+        : message,
+    );
+    setPhase('awaiting');
+  });
+
+  const startListening = useCallback(async () => {
+    if (!node || phase !== 'awaiting') return;
+    setError('');
+    if (isIOSSimulator) {
+      try {
+        const permission = await requestRecordingPermissionsAsync();
+        if (!permission.granted) {
+          setError('Microphone permission is required for vocal decisions.');
+          return;
+        }
+        latestTranscript.current = '';
+        speechSubmitted.current = false;
+        speechFailed.current = false;
+        setTranscript('');
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+        await simulatorRecorder.prepareToRecordAsync();
+        simulatorRecorder.record();
+        setPhase('listening');
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : 'The Simulator could not start recording.');
+        setPhase('awaiting');
+      }
+      return;
+    }
+    if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
+      setError('Speech recognition is not available on this device.');
+      return;
+    }
+    if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition() && Platform.OS === 'android') {
+      await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({ locale: 'en-US' });
+      setError('Install the English offline speech model, then tap Speak again.');
+      return;
+    }
+    if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition() && Platform.OS === 'ios' && Device.isDevice) {
+      setError('This device does not support private on-device speech recognition.');
+      return;
+    }
+    const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!permission.granted) {
+      setError('Microphone permission is required for vocal decisions.');
+      return;
+    }
+    setTranscript('');
+    latestTranscript.current = '';
+    speechSubmitted.current = false;
+    speechFailed.current = false;
+    ExpoSpeechRecognitionModule.start({
+      lang: 'en-US',
+      interimResults: true,
+      continuous: false,
+      maxAlternatives: 1,
+      // The iOS Simulator has no reliable downloadable on-device speech model.
+      // Physical iPhones still transcribe locally; the simulator may use
+      // Apple's speech service, and only the resulting text reaches our API.
+      requiresOnDeviceRecognition: Platform.OS === 'ios' ? Device.isDevice : Platform.OS !== 'web',
+      contextualStrings: node.vocalOptions?.flatMap((option) => [option.label, ...option.aliases]),
+    });
+  }, [isIOSSimulator, node, phase, simulatorRecorder]);
+
+  const finishListening = useCallback(async () => {
+    if (isIOSSimulator) {
+      setPhase('resolving');
+      try {
+        await simulatorRecorder.stop();
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        const uri = simulatorRecorder.uri;
+        if (!uri) throw new Error('The Simulator did not produce an audio recording.');
+        const result = await transcribeRecordedAnswer(uri);
+        latestTranscript.current = result.transcript;
+        setTranscript(result.transcript);
+        speechSubmitted.current = true;
+        await submitTranscriptRef.current(result.transcript);
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : 'The recorded answer could not be transcribed.');
+        setPhase('awaiting');
+      }
+      return;
+    }
+    ExpoSpeechRecognitionModule.stop();
+    // Tapping finish is an explicit confirmation of the transcript currently
+    // on screen. Submit it immediately; the end handler remains the fallback
+    // for a final result that arrives during stop().
+    submitLatestSpeech();
+  }, [isIOSSimulator, simulatorRecorder, submitLatestSpeech]);
+
+  const repeatNode = () => {
+    if (!node) return;
+    player.pause();
+    if (lineIndex === 0 && currentLine) {
+      startedLine.current = '';
+      heardPlayingLine.current = '';
+      finishedLine.current = '';
+      setPhase('loading');
+      player.seekTo(0);
+    } else {
+      setLineIndex(0);
+    }
+  };
+
+  const skipToChoice = () => {
+    if (!currentLine || (phase !== 'loading' && phase !== 'playing')) return;
+    player.pause();
+    // Mark the current line as handled so a late playback completion event
+    // cannot advance or restart dialogue after the demo control is used.
+    finishedLine.current = currentLine.id;
+    setPhase('awaiting');
+  };
+
+  const resume = () => {
+    setPaused(false);
+    if (phase === 'playing') player.play();
+  };
+
+  const togglePause = async () => {
+    if (paused) {
+      resume();
+      return;
+    }
+    player.pause();
+    if (phase === 'listening') {
+      speechCancelledByControl.current = true;
+      if (isIOSSimulator) {
+        try {
+          await simulatorRecorder.stop();
+          await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        } catch {
+          // Pausing should remain reliable even if the Simulator recorder has
+          // already stopped itself.
+        }
+      } else {
+        ExpoSpeechRecognitionModule.abort();
+      }
+      setPhase('awaiting');
+    }
+    setPaused(true);
+  };
+
+  const leaveRun = () => {
+    player.pause();
+    if (phase === 'listening') {
+      speechCancelledByControl.current = true;
+      ExpoSpeechRecognitionModule.abort();
+    }
+    onBack();
+  };
+
+  const audioState = paused
+    ? 'Story paused'
+    : node?.generated && currentLine && !currentLine.audioUrl && (phase === 'playing' || phase === 'loading')
+    ? 'Voice unavailable · showing captions'
+    : phase === 'playing' || phase === 'loading'
+    ? `${currentLine?.speaker ?? 'Story'} is ${phase === 'loading' ? 'loading' : 'speaking'}`
+    : phase === 'listening' ? (isIOSSimulator ? 'Recording from Mac microphone' : 'Listening on this device') : phase === 'resolving' ? 'Directing the story' : 'Awaiting your movement';
+
+  const paceStatus = currentPace > targetPaceSeconds
+    ? { label: 'Below target', color: C.danger, icon: 'arrow-down' as const }
+    : currentPace < targetPaceSeconds
+      ? { label: 'Above target', color: C.success, icon: 'arrow-up' as const }
+      : { label: 'On target', color: C.white, icon: 'remove' as const };
+
   return (
     <View style={styles.runScreen}>
       <NativeStatusBar barStyle="light-content" />
-      <View style={styles.runMetrics}>
-        <View><Text style={styles.runMetricLabel}>ELAPSED</Text><Text style={styles.runMetric}>18:42</Text></View>
-        <View style={styles.metricRight}><Text style={styles.runMetricLabel}>PACE</Text><Text style={styles.runMetric}>5:48</Text></View>
+      <View style={styles.runTopBar}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={8}
+          onPress={leaveRun}
+          style={({ pressed }) => [styles.runBack, pressed && styles.runControlPressed]}
+        >
+          <Ionicons name="chevron-back" size={28} color={C.white} />
+        </Pressable>
+        <View style={styles.runMetrics}>
+          <View style={styles.runMetricBlock}>
+            <Text style={styles.runMetricLabel}>ELAPSED</Text>
+            <Text style={styles.runMetric}>{formatElapsed(elapsedSeconds)}</Text>
+          </View>
+          <View style={styles.runMetricBlock}>
+            <Text style={styles.runMetricLabel}>DISTANCE</Text>
+            <Text style={styles.runMetric}>{distanceKm.toFixed(2)} <Text style={styles.runMetricUnit}>KM</Text></Text>
+          </View>
+        </View>
+        <View
+          accessibilityLabel={`Current pace ${formatPace(currentPace)} per kilometre, ${paceStatus.label.toLowerCase()}`}
+          style={styles.paceMetric}
+        >
+          <Text style={styles.runMetricLabel}>CURRENT PACE</Text>
+          <Text style={[styles.runMetric, { color: paceStatus.color }]}>{formatPace(currentPace)}</Text>
+          <View style={styles.paceStatusRow}>
+            <Ionicons name={paceStatus.icon} size={10} color={paceStatus.color} />
+            <Text style={[styles.paceStatusText, { color: paceStatus.color }]}>{paceStatus.label.toUpperCase()}</Text>
+          </View>
+        </View>
       </View>
       <View style={styles.map}>
-        <View style={styles.mapGridA} />
-        <View style={styles.mapGridB} />
-        <View style={[styles.route, styles.routePast]} />
-        <View style={[styles.route, styles.routeCurrent]} />
-        <View style={[styles.route, styles.routeAlternate]} />
-        <View style={styles.storyPoint}><View style={styles.storyPointCore} /></View>
-        <View style={styles.runnerHalo}><View style={styles.runnerMarker} /></View>
-        <View style={styles.mapLabel}><Text style={styles.mapLabelText}>BELL TOWER</Text></View>
+        <Image
+          source={require('./assets/maps/toronto-torch-map.png')}
+          resizeMode="cover"
+          style={styles.mapImage}
+        />
+        <Ionicons name="navigate" size={22} color={C.torch} style={styles.runnerMarker} />
       </View>
       <View style={styles.objectiveWrap}>
-        <Text style={styles.runEyebrow}>CURRENT OBJECTIVE</Text>
-        <Text style={styles.objective}>Keep north. The riders are close.</Text>
-        <View style={styles.audioLine}>
-          <View style={styles.audioDot} />
-          <Text style={styles.audioText}>Mara is speaking</Text>
-          <Text style={styles.audioWave}>╵╷│╵╷│</Text>
+        <Text style={styles.runEyebrow}>{node?.label?.toUpperCase() ?? 'GREYWATCH'}</Text>
+        <Text numberOfLines={2} style={styles.objective}>{error || node?.objective || 'Opening the chapel…'}</Text>
+        <View style={styles.captionSlot}>
+          {(captions || (node?.generated && !currentLine?.audioUrl)) && currentLine && (phase === 'playing' || phase === 'loading') && (
+            <Text numberOfLines={3} style={styles.runCaption}>{currentLine.text}</Text>
+          )}
         </View>
+        <View style={styles.audioLine}>
+          <View style={[styles.audioDot, paused && styles.audioDotPaused]} />
+          <Text style={styles.audioText}>{audioState}</Text>
+          {(phase === 'playing' || phase === 'loading') && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Skip dialogue and show the choice"
+              accessibilityHint="Demo control"
+              hitSlop={6}
+              onPress={skipToChoice}
+              style={({ pressed }) => [styles.skipChoiceButton, pressed && styles.skipChoiceButtonPressed]}
+            >
+              <Ionicons name="play-skip-forward" size={14} color={C.white} />
+              <Text style={styles.skipChoiceText}>Skip to choice</Text>
+            </Pressable>
+          )}
+        </View>
+        {lastResult ? <Text style={styles.sensorResult}>LAST INPUT · {lastResult.toUpperCase()}</Text> : null}
+        {phase === 'awaiting' && node?.interaction === 'direction' && (
+          <View style={styles.sensorRow}>
+            <DemoButton label="← Left" onPress={() => resolveMovement({ direction: 'left' })} />
+            <DemoButton label="Right →" onPress={() => resolveMovement({ direction: 'right' })} />
+          </View>
+        )}
+        {phase === 'awaiting' && node?.interaction === 'pace' && (
+          <View style={styles.sensorBlock}>
+            <View style={styles.paceAdjustRow}>
+              <DemoButton label="Faster" onPress={() => setCurrentPace((value) => Math.max(180, value - 15))} />
+              <Text style={styles.sensorValue}>{formatPace(currentPace)} /km</Text>
+              <DemoButton label="Slower" onPress={() => setCurrentPace((value) => Math.min(900, value + 15))} />
+            </View>
+            <DemoButton wide label="Use this pace" onPress={() => resolveMovement({ currentPaceSeconds: currentPace })} />
+          </View>
+        )}
+        {phase === 'awaiting' && node?.interaction === 'stop' && (
+          <View style={styles.sensorRow}>
+            <DemoButton label="Stop" onPress={() => resolveMovement({ stopped: true })} />
+            <DemoButton label="Keep moving" onPress={() => resolveMovement({ stopped: false })} />
+          </View>
+        )}
+        {(phase === 'awaiting' || phase === 'listening') && node?.interaction === 'vocal' && (
+          <View style={styles.sensorBlock}>
+            {transcript ? <Text style={styles.transcript}>“{transcript}”</Text> : null}
+            <DemoButton
+              wide
+              label={phase === 'listening' ? (isIOSSimulator ? 'Recording… tap when finished' : 'Listening… tap when finished') : 'Speak your answer'}
+              onPress={phase === 'listening' ? finishListening : startListening}
+            />
+          </View>
+        )}
+        {phase === 'complete' && (
+          <View style={styles.sensorBlock}>
+            <Text style={styles.transcript}>The story heard “{transcript}” and chose {lastResult}.</Text>
+            <DemoButton wide label="Finish this run" onPress={onFinish} />
+          </View>
+        )}
       </View>
       <View style={styles.runControls}>
-        <Pressable style={styles.roundControl}><Text style={styles.controlGlyph}>CC</Text><Text style={styles.controlText}>Captions</Text></Pressable>
-        <Pressable onPress={() => setPaused(true)} style={styles.pauseControl}><Text style={styles.pauseGlyph}>Ⅱ</Text></Pressable>
-        <Pressable style={styles.roundControl}><Text style={styles.controlGlyph}>↶</Text><Text style={styles.controlText}>Repeat</Text></Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={captions ? 'Hide captions' : 'Show captions'}
+          accessibilityState={{ selected: captions }}
+          onPress={() => setCaptions((value) => !value)}
+          style={({ pressed }) => [styles.roundControl, pressed && styles.runControlPressed]}
+        >
+          <Text style={[styles.controlGlyph, captions && styles.controlGlyphActive]}>CC</Text>
+          <Text style={[styles.controlText, captions && styles.controlTextActive]}>Captions</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={paused ? 'Resume story' : 'Pause story'}
+          onPress={togglePause}
+          style={({ pressed }) => [styles.pauseControl, pressed && styles.pauseControlPressed]}
+        >
+          <Ionicons name={paused ? 'play' : 'pause'} size={28} color={C.ink} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Repeat last scene"
+          onPress={repeatNode}
+          style={({ pressed }) => [styles.roundControl, pressed && styles.runControlPressed]}
+        >
+          <Ionicons name="refresh" size={20} color={C.white} />
+          <Text style={styles.controlText}>Repeat</Text>
+        </Pressable>
       </View>
-      <Modal transparent visible={paused} animationType="slide" onRequestClose={() => setPaused(false)}>
-        <Pressable style={styles.modalShade} onPress={() => setPaused(false)} />
-        <View style={styles.pauseSheet}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.pageTitle}>Story paused.</Text>
-          <Text style={styles.bodyMuted}>Your route and story state are safe.</Text>
-          <PrimaryButton label="Resume story" onPress={() => setPaused(false)} />
-          <Pressable style={styles.secondaryButton} onPress={onFinish}><Text style={styles.secondaryButtonText}>End demo run</Text></Pressable>
-        </View>
-      </Modal>
     </View>
   );
 }
 
-function Recap({ onDone }: { onDone: () => void }) {
+function Recap({ onDone, onNewRun }: { onDone: () => void; onNewRun: () => void }) {
   return (
     <Page noTab>
-      <Header eyebrow="RUN COMPLETE" title="You reached the bell tower alone." />
-      <Text style={styles.recapLead}>Mara held the lower road so you could carry the king’s seal north.</Text>
+      <Header eyebrow="RUN COMPLETE · GREYWATCH" title="The chapel remembers your choice." />
+      <Text style={styles.recapLead}>Your movement decided who crossed the Lantern Gate and what Greywatch learned about Thomas.</Text>
       <View style={styles.recapMap}>
         <View style={[styles.recapRoute, { transform: [{ rotate: '-16deg' }] }]} />
         <View style={[styles.recapRoute, styles.recapRouteTwo, { transform: [{ rotate: '24deg' }] }]} />
         <Moment style={styles.momentOne} number="1" />
         <Moment style={styles.momentTwo} number="2" />
         <Moment style={styles.momentThree} number="3" />
-        <Text style={styles.recapMapLabel}>YOUR NORTH ROAD</Text>
+        <Text style={styles.recapMapLabel}>YOUR PATH THROUGH GREYWATCH</Text>
       </View>
       <SectionTitle title="What changed" />
-      <Consequence tag="DECISION" text="You entered Alder Wood." />
-      <Consequence tag="CONSEQUENCE" text="Mara was injured at the northern gate." />
-      <Consequence tag="DISCOVERY" text="You carry the king’s seal." />
+      <Consequence tag="DECISION" text="You decided whether Edric left the chapel alive." />
+      <Consequence tag="MOVEMENT" text="Your direction selected the route to the Lantern Vault." />
+      <Consequence tag="CONSEQUENCE" text="Your pace determined who made it through the gate." />
       <View style={styles.stats}>
         <Stat value="30:08" label="TIME" />
         <Stat value="5.14" label="KM" />
@@ -308,10 +883,11 @@ function Recap({ onDone }: { onDone: () => void }) {
       </View>
       <View style={styles.nextHook}>
         <Text style={styles.cardEyebrow}>NEXT TIME</Text>
-        <Text style={styles.cardTitle}>The tower is occupied.</Text>
+        <Text style={styles.cardTitle}>The forged order is still inside Greywatch.</Text>
         <Text style={styles.bodyMuted}>Recommended: at least 20 minutes</Text>
       </View>
-      <PrimaryButton label="Return home" onPress={onDone} />
+      <PrimaryButton label="Start a new run" onPress={onNewRun} />
+      <Pressable style={styles.secondaryButton} onPress={onDone}><Text style={styles.secondaryButtonText}>Return home</Text></Pressable>
     </Page>
   );
 }
@@ -464,6 +1040,14 @@ function PrimaryButton({ label, onPress }: { label: string; onPress: () => void 
   );
 }
 
+function DemoButton({ label, onPress, wide = false }: { label: string; onPress: () => void; wide?: boolean }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.demoButton, wide && styles.demoButtonWide, pressed && styles.demoButtonPressed]}>
+      <Text style={styles.demoButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function SectionTitle({ title, action }: { title: string; action?: string }) {
   return (
     <View style={styles.sectionTitle}>
@@ -566,20 +1150,33 @@ const styles = StyleSheet.create({
   backDark: { position: 'absolute', top: 14, left: 16, width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(11,12,14,0.5)', alignItems: 'center', justifyContent: 'center' }, backDarkText: { fontSize: 38, lineHeight: 40, color: C.white, marginTop: -4 },
   detailArtCopy: { paddingHorizontal: 20, paddingBottom: 26 }, detailTitle: { fontFamily: 'Arial', fontSize: 36, lineHeight: 40, color: C.white, fontWeight: '700', marginTop: 7 }, detailBody: { paddingHorizontal: 20 },
   hook: { fontFamily: 'Arial', fontSize: 21, lineHeight: 29, color: C.ink, fontWeight: '600', marginVertical: 24 },
-  preview: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line }, playCircle: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.ink, justifyContent: 'center', alignItems: 'center', marginRight: 14 }, play: { color: C.paper, fontSize: 14, marginLeft: 2 }, previewTitle: { fontFamily: 'Arial', fontSize: 16, color: C.ink, fontWeight: '700' }, wave: { marginLeft: 8 }, waveText: { color: C.torch, fontSize: 16 },
+  preview: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line }, playCircle: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.ink, justifyContent: 'center', alignItems: 'center', marginRight: 14 }, play: { color: C.paper, fontSize: 14, marginLeft: 2 }, previewTitle: { fontFamily: 'Arial', fontSize: 16, color: C.ink, fontWeight: '700' },
   mechanics: { flexDirection: 'row', gap: 10 }, mechanic: { flex: 1, minHeight: 130, borderWidth: 1, borderColor: C.line, borderRadius: 16, padding: 12 }, mechanicSymbol: { fontSize: 24, color: C.torch, height: 38 }, mechanicTitle: { fontFamily: 'Arial', fontSize: 14, fontWeight: '700', color: C.ink }, mechanicBody: { fontFamily: 'Arial', fontSize: 11, lineHeight: 15, color: C.muted, marginTop: 4 }, creditBlock: { paddingVertical: 22, marginTop: 20, borderTopWidth: 1, borderColor: C.line },
   formSection: { marginTop: 20 }, formHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }, formTitle: { fontFamily: 'Arial', fontSize: 17, fontWeight: '700', color: C.ink },
   pills: { flexDirection: 'row', gap: 8 }, pill: { flex: 1, minHeight: 48, borderRadius: 24, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }, pillSelected: { backgroundColor: C.ink, borderColor: C.ink }, pillText: { fontFamily: 'Arial', fontSize: 13, color: C.ink, fontWeight: '600' }, pillTextSelected: { color: C.white },
   readiness: { borderTopWidth: 1, borderColor: C.line, marginTop: 30 }, readinessRow: { minHeight: 52, borderBottomWidth: 1, borderColor: C.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, readinessValue: { flexDirection: 'row', alignItems: 'center', gap: 8 }, readyDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.line }, readyDotOn: { backgroundColor: C.moss },
   safetyNote: { marginTop: 22, padding: 16, backgroundColor: '#E9E6DF', borderRadius: 14 }, safetyTitle: { fontFamily: 'Arial', fontSize: 14, fontWeight: '700', color: C.ink, marginBottom: 3 }, bottomAction: { marginTop: 18 },
-  runScreen: { flex: 1, backgroundColor: C.ink, paddingTop: 12 }, runMetrics: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, zIndex: 2 }, metricRight: { alignItems: 'flex-end' }, runMetricLabel: { fontFamily: 'Arial', fontSize: 9, letterSpacing: 1.4, color: '#8E9298', fontWeight: '700' }, runMetric: { fontFamily: 'Arial Narrow', fontSize: 26, lineHeight: 30, color: C.white, fontWeight: '600' },
-  map: { flex: 1, marginTop: 12, overflow: 'hidden' }, mapGridA: { position: 'absolute', left: -80, right: -70, top: '34%', height: 1, backgroundColor: '#22252A', transform: [{ rotate: '-23deg' }] }, mapGridB: { position: 'absolute', left: -50, right: -80, top: '62%', height: 1, backgroundColor: '#22252A', transform: [{ rotate: '18deg' }] },
-  route: { position: 'absolute', height: 6, borderRadius: 3, transformOrigin: 'left center' }, routePast: { width: 190, left: -18, top: '76%', backgroundColor: '#55585C', transform: [{ rotate: '-50deg' }] }, routeCurrent: { width: 260, left: '39%', top: '51%', backgroundColor: C.torch, transform: [{ rotate: '-57deg' }] }, routeAlternate: { width: 180, left: '45%', top: '50%', height: 3, backgroundColor: '#3B3D42', transform: [{ rotate: '-14deg' }] },
-  runnerHalo: { position: 'absolute', left: '39%', top: '47%', width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: 'rgba(255,79,46,0.4)', alignItems: 'center', justifyContent: 'center' }, runnerMarker: { width: 15, height: 21, backgroundColor: C.torch, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomRightRadius: 8, transform: [{ rotate: '36deg' }] },
-  storyPoint: { position: 'absolute', right: 50, top: '16%', width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: '#A6A8AB', alignItems: 'center', justifyContent: 'center' }, storyPointCore: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.white }, mapLabel: { position: 'absolute', right: 20, top: '24%' }, mapLabelText: { color: '#95989C', fontFamily: 'Arial', fontSize: 9, letterSpacing: 1.4, fontWeight: '700' },
-  objectiveWrap: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14, borderTopWidth: 1, borderColor: '#202328' }, runEyebrow: { fontFamily: 'Arial', fontSize: 9, letterSpacing: 1.5, color: C.torch, fontWeight: '700' }, objective: { fontFamily: 'Arial', fontSize: 20, lineHeight: 26, color: C.white, fontWeight: '600', marginTop: 6 }, audioLine: { flexDirection: 'row', alignItems: 'center', marginTop: 12 }, audioDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.torch, marginRight: 8 }, audioText: { fontFamily: 'Arial', fontSize: 12, color: '#A5A8AC', flex: 1 }, audioWave: { color: '#A5A8AC', fontSize: 13 },
-  runControls: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 35, paddingVertical: 18, paddingHorizontal: 20 }, roundControl: { width: 62, alignItems: 'center', gap: 5 }, controlGlyph: { color: C.white, fontFamily: 'Arial', fontSize: 14, fontWeight: '700' }, controlText: { color: '#8F9297', fontFamily: 'Arial', fontSize: 10 }, pauseControl: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center' }, pauseGlyph: { color: C.ink, fontFamily: 'Arial', fontSize: 24, fontWeight: '800' },
-  modalShade: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' }, pauseSheet: { backgroundColor: C.paper, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 36, borderTopLeftRadius: 24, borderTopRightRadius: 24 }, sheetHandle: { width: 40, height: 4, backgroundColor: C.line, borderRadius: 2, alignSelf: 'center', marginBottom: 24 }, secondaryButton: { height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, secondaryButtonText: { fontFamily: 'Arial', fontSize: 15, fontWeight: '700', color: C.muted },
+  runScreen: { flex: 1, backgroundColor: C.ink, paddingTop: 4 },
+  runTopBar: { minHeight: 76, flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingTop: 10, zIndex: 2 },
+  runBack: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', marginRight: 2 },
+  runMetrics: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', paddingTop: 2 },
+  runMetricBlock: { minWidth: 64 },
+  paceMetric: { width: 100, alignItems: 'flex-end', paddingTop: 2 },
+  runMetricLabel: { fontFamily: 'Arial', fontSize: 8, lineHeight: 11, letterSpacing: 1.2, color: '#8E9298', fontWeight: '700' },
+  runMetric: { fontFamily: 'Arial Narrow', fontVariant: ['tabular-nums'], fontSize: 22, lineHeight: 27, color: C.white, fontWeight: '700' },
+  runMetricUnit: { fontFamily: 'Arial', fontSize: 8, lineHeight: 10, color: '#8E9298', fontWeight: '700' },
+  paceStatusRow: { height: 12, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  paceStatusText: { fontFamily: 'Arial', fontSize: 7, lineHeight: 9, letterSpacing: 0.6, fontWeight: '700' },
+  map: { flex: 1, marginTop: 12, overflow: 'hidden' },
+  mapImage: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100%', transform: [{ scale: 1.24 }] },
+  runnerMarker: { position: 'absolute', left: '44%', top: '55%', transform: [{ rotate: '-45deg' }] },
+  objectiveWrap: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14, borderTopWidth: 1, borderColor: '#202328' }, runEyebrow: { fontFamily: 'Arial', fontSize: 9, letterSpacing: 1.5, color: C.torch, fontWeight: '700' }, objective: { minHeight: 52, fontFamily: 'Arial', fontSize: 20, lineHeight: 26, color: C.white, fontWeight: '600', marginTop: 6 }, captionSlot: { height: 51, justifyContent: 'center', overflow: 'hidden' }, audioLine: { minHeight: 48, flexDirection: 'row', alignItems: 'center', marginTop: 4 }, audioDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.torch, marginRight: 8 }, audioDotPaused: { backgroundColor: '#686A70' }, audioText: { fontFamily: 'Arial', fontSize: 12, color: '#A5A8AC', flex: 1 },
+  skipChoiceButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 24, borderWidth: 1, borderColor: '#4A4E53', paddingHorizontal: 14, marginLeft: 10 }, skipChoiceButtonPressed: { backgroundColor: '#25282D', borderColor: C.torch }, skipChoiceText: { fontFamily: 'Arial', fontSize: 11, color: C.white, fontWeight: '700' },
+  runCaption: { fontFamily: 'Arial', fontSize: 12, lineHeight: 17, color: '#A5A8AC' }, sensorResult: { fontFamily: 'Arial', fontSize: 8, letterSpacing: 1.2, color: '#74787D', fontWeight: '700', marginTop: 10 },
+  sensorRow: { flexDirection: 'row', gap: 10, marginTop: 12 }, sensorBlock: { gap: 9, marginTop: 12 }, paceAdjustRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, sensorValue: { flex: 1, textAlign: 'center', fontFamily: 'Arial Narrow', fontSize: 18, color: C.white, fontWeight: '700' }, transcript: { fontFamily: 'Arial', fontSize: 12, lineHeight: 17, color: '#D5D7D9' },
+  demoButton: { flex: 1, minHeight: 42, borderRadius: 21, borderWidth: 1, borderColor: '#4A4E53', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 }, demoButtonWide: { flex: 0, width: '100%' }, demoButtonPressed: { backgroundColor: '#25282D', borderColor: C.torch }, demoButtonText: { fontFamily: 'Arial', fontSize: 12, color: C.white, fontWeight: '700' },
+  runControls: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 35, paddingVertical: 18, paddingHorizontal: 20 }, roundControl: { width: 62, minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 5 }, controlGlyph: { color: '#8F9297', fontFamily: 'Arial', fontSize: 14, fontWeight: '700' }, controlGlyphActive: { color: C.white }, controlText: { color: '#8F9297', fontFamily: 'Arial', fontSize: 10 }, controlTextActive: { color: C.white }, runControlPressed: { opacity: 0.6 }, pauseControl: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center' }, pauseControlPressed: { backgroundColor: '#D8D6D0', transform: [{ scale: 0.97 }] },
+  secondaryButton: { height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, secondaryButtonText: { fontFamily: 'Arial', fontSize: 15, fontWeight: '700', color: C.muted },
   recapLead: { fontFamily: 'Arial', fontSize: 16, lineHeight: 23, color: C.muted, marginTop: 4, marginBottom: 22 }, recapMap: { height: 240, borderRadius: 20, backgroundColor: '#171A19', overflow: 'hidden' }, recapRoute: { position: 'absolute', left: 15, top: 135, width: 260, height: 5, borderRadius: 3, backgroundColor: C.torch }, recapRouteTwo: { left: 200, top: 92, width: 150, backgroundColor: '#71757A' }, moment: { position: 'absolute', width: 26, height: 26, borderRadius: 13, backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: C.ink }, momentOne: { left: 54, top: 143 }, momentTwo: { left: 170, top: 106 }, momentThree: { right: 42, top: 79 }, momentText: { fontFamily: 'Arial', fontSize: 10, fontWeight: '700', color: C.ink }, recapMapLabel: { position: 'absolute', left: 16, bottom: 14, fontFamily: 'Arial', fontSize: 9, letterSpacing: 1.4, color: '#9EA19E', fontWeight: '700' },
   consequenceRow: { flexDirection: 'row', paddingVertical: 14, borderTopWidth: 1, borderColor: C.line }, consequenceTag: { width: 104, fontFamily: 'Arial', fontSize: 9, letterSpacing: 1.2, color: C.muted, fontWeight: '700', paddingTop: 3 }, consequenceBody: { flex: 1, fontFamily: 'Arial', fontSize: 14, lineHeight: 20, color: C.ink, fontWeight: '600' },
   stats: { flexDirection: 'row', backgroundColor: '#E9E6DF', borderRadius: 16, paddingVertical: 18, marginTop: 24 }, stat: { flex: 1, alignItems: 'center' }, statValue: { fontFamily: 'Arial Narrow', fontSize: 21, color: C.ink, fontWeight: '700' }, statLabel: { fontFamily: 'Arial', fontSize: 8, letterSpacing: 1.1, color: C.muted, fontWeight: '700', marginTop: 3 }, nextHook: { borderTopWidth: 1, borderColor: C.line, paddingTop: 20, marginTop: 28, marginBottom: 8 },

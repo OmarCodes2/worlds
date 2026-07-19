@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Worlds — Greywatch Story Tree</title>
+    <style>
+      :root { --ink:#0b0c0e; --paper:#f4f2ed; --torch:#ff4f2e; --ash:#686a70; --line:#d8d6d0; --sky:#7897a8; }
+      * { box-sizing:border-box; }
+      body { margin:0; color:var(--ink); background:var(--paper); font-family:Arial,sans-serif; }
+      header { padding:32px max(24px, calc((100vw - 1280px)/2)); border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:32px; align-items:end; }
+      .eyebrow { color:var(--ash); font-size:10px; font-weight:700; letter-spacing:.11em; text-transform:uppercase; }
+      h1 { margin:6px 0 0; font-size:clamp(34px,5vw,56px); line-height:.88; letter-spacing:-.06em; }
+      .status { max-width:340px; color:var(--ash); font-size:13px; line-height:1.4; }
+      main { max-width:1280px; margin:auto; padding:28px 24px 56px; }
+      .intro { margin:0 0 24px; max-width:760px; color:var(--ash); font-size:16px; line-height:1.45; }
+      .layout { display:grid; grid-template-columns:minmax(720px,1fr) 300px; gap:20px; }
+      .map { align-self:start; padding:32px 24px 28px; overflow-x:auto; border:1px solid var(--line); background:#faf9f5; }
+      .tree { min-width:820px; display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:112px 42px 112px 42px 122px; gap:0 18px; align-items:center; position:relative; }
+      .node { min-height:92px; padding:14px; border:1px solid var(--line); background:var(--paper); cursor:pointer; transition:transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease; }
+      .node:hover,.node.active { border-color:var(--ink); transform:translateY(-2px); box-shadow:0 6px 0 var(--ink); }
+      .node.choice { border-left:4px solid var(--torch); }
+      .node.leaf { border-left:4px solid var(--sky); }
+      .tag { display:block; margin-bottom:7px; color:var(--ash); font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+      .node h2 { margin:0; font-size:17px; line-height:1.05; letter-spacing:-.025em; }
+      .node p { margin:7px 0 0; color:var(--ash); font-size:12px; line-height:1.3; }
+      .root { grid-column:2 / 4; grid-row:1; }
+      .line { background:var(--line); height:1px; align-self:center; }
+      .vline { width:1px; height:100%; background:var(--line); justify-self:center; }
+      .branch-line { grid-column:1 / 5; grid-row:2; position:relative; height:42px; }
+      .branch-line::before { content:""; position:absolute; top:0; left:50%; width:1px; height:20px; background:var(--line); }
+      .branch-line::after { content:""; position:absolute; top:20px; left:12.5%; width:75%; height:1px; background:var(--line); }
+      .branch-line i,.leaf-lines i { position:absolute; display:block; width:1px; background:var(--line); }
+      .branch-line i:first-child { left:12.5%; top:20px; height:22px; }.branch-line i:last-child { left:87.5%; top:20px; height:22px; }
+      .left { grid-column:1 / 3; grid-row:3; }.right { grid-column:3 / 5; grid-row:3; }
+      .leaf-lines { grid-column:1 / 5; grid-row:4; position:relative; height:42px; }
+      .leaf-lines::before,.leaf-lines::after { content:""; position:absolute; top:0; width:1px; height:20px; background:var(--line); }
+      .leaf-lines::before { left:25%; }.leaf-lines::after { left:75%; }
+      .leaf-lines .a { left:12.5%; top:20px; width:25%; height:1px; }.leaf-lines .b { left:62.5%; top:20px; width:25%; height:1px; }
+      .leaf-lines .c { left:12.5%; top:20px; height:22px; }.leaf-lines .d { left:37.5%; top:20px; height:22px; }.leaf-lines .e { left:62.5%; top:20px; height:22px; }.leaf-lines .f { left:87.5%; top:20px; height:22px; }
+      .leaf1 { grid-column:1; grid-row:5; }.leaf2 { grid-column:2; grid-row:5; }.leaf3 { grid-column:3; grid-row:5; }.leaf4 { grid-column:4; grid-row:5; }
+      .outcome-layer { position:relative; width:100%; min-width:0; margin:30px 0 0; padding:0; display:grid; grid-template-columns:1fr 1fr; }
+      .branch-outcomes { min-width:0; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+      .trial-group { position:relative; padding-top:60px; }.trial-group::before { content:""; position:absolute; top:-30px; left:50%; width:1px; height:50px; background:var(--line); }.trial-group::after { content:""; position:absolute; top:20px; left:25%; width:50%; height:1px; background:var(--line); }.trial-label { display:none; }.outcome-pair { position:relative; display:grid; grid-template-columns:1fr 1fr; gap:10px; }.outcome-pair .node { position:relative; min-height:110px; padding:12px; }.outcome-pair .node::before { content:""; position:absolute; top:-40px; left:50%; width:1px; height:40px; background:var(--line); }.outcome-pair .node h2 { font-size:15px; }.outcome-pair .node p { display:none; }
+      .inspector { align-self:start; position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto; overscroll-behavior:contain; padding:20px; border:1px solid var(--line); }
+      .inspector h2 { margin:9px 0; font-size:25px; line-height:1; letter-spacing:-.045em; }.inspector p { color:var(--ash); font-size:14px; line-height:1.45; }
+      hr { border:0; border-top:1px solid var(--line); margin:18px 0; }.questions { margin:0; padding-left:18px; font-size:13px; line-height:1.45; }.questions li+li { margin-top:8px; }
+      .audio-toolbar { display:flex; gap:8px; align-items:center; margin:12px 0 4px; }.audio-control { min-height:36px; padding:0 12px; border:1px solid var(--ink); background:var(--ink); color:var(--paper); font:700 11px/1 Arial,sans-serif; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; }.audio-control.secondary { background:transparent; color:var(--ink); }.audio-control:disabled { cursor:not-allowed; opacity:.35; }.audio-status { color:var(--ash); font-size:11px; line-height:1.25; }
+      .dialogue { display:grid; gap:10px; margin:10px 0 0; }.dialogue-line { position:relative; min-height:34px; padding:3px 0 3px 34px; color:var(--ink); font-size:13px; line-height:1.38; }.speaker { display:block; margin-bottom:2px; color:var(--torch); font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }.line-audio { position:absolute; top:2px; left:0; width:26px; height:26px; padding:0; border:1px solid var(--line); border-radius:999px; background:transparent; color:var(--ink); cursor:pointer; }.line-audio:hover { border-color:var(--torch); color:var(--torch); }.line-audio:disabled { cursor:not-allowed; opacity:.25; }.line-id { display:block; margin-top:3px; overflow:hidden; color:var(--ash); font-size:8px; line-height:1.15; letter-spacing:.03em; text-overflow:ellipsis; white-space:nowrap; }
+      .note { margin-top:24px; padding:16px 18px; border-left:4px solid var(--torch); background:#fff0eb; font-size:14px; line-height:1.4; }
+      @media(max-width:960px) { header { display:block; }.status { margin-top:16px; }.layout { grid-template-columns:1fr; }.inspector { position:static; max-height:none; overflow:visible; } }
+    </style>
+  </head>
+  <body>
+    <header><div><div class="eyebrow">Worlds / Greywatch / working story tree</div><h1>THE LAST<br />WITNESS</h1></div><div class="status">A new premise for discussion. This is a strict tree: every card has one parent, except the root. No foldbacks, no shared outcomes.</div></header>
+    <main>
+      <p class="intro">Edric killed Thomas—Garrick’s brother—when Thomas tried to ring Greywatch’s eastern alarm. Edric claims the bell would have exposed families hiding beneath the road. Garrick wants him dead. Mara needs him alive: Edric is the last lantern keeper who can reach the Vault, decode its ledger, and warn the inner wall before it falls.</p>
+      <div class="layout">
+        <section class="map" aria-label="The Last Witness story tree"><div class="tree">
+          <article class="node root" data-node-type="left_right" data-left-target="keep_edric_alive" data-right-target="kill_edric" data-title="Root — Blood in the Chapel" data-copy="In a ruined chapel beneath Greywatch, Garrick corners Edric with Thomas’s blood still on his coat. Edric admits the killing. Mara pleads for the last lantern keeper because only he knows the sealed route, can open the Vault, and can read the keeper cipher." data-dialogue="Garrick::Say his name.|Edric::Tho—mas.|Garrick::Say what you did.|Edric::I stopped him reaching the bell. He fought me. I struck once.|Garrick::My brother died on that floor. I will kill you for it.|Mara::Please! No!|SFX::Garrick’s sword tears free of its leather scabbard.|Mara::Edric is the last lantern keeper! He alone knows the sealed way to the Vault. He can open its keeper door, read the ciphered ledger, and light the warning before the inner wall falls!|Edric::Kill me and you’ll die here.|Garrick::It is time for you to die.|Mara::Rowan! Do something!|ROWAN — THOUGHT::Do I let Garrick kill him? Or do I keep Edric alive, knowing what he did to Thomas? If Edric dies, Greywatch may lose its only warning. If he lives, I am asking Garrick to walk beside his brother’s killer.|Mara::Rowan—will you keep Edric alive, or let Garrick kill him?" data-questions="Does the performance make Garrick’s intent unmistakable?|Does Mara’s urgency establish why Edric must remain alive?|Does Rowan’s thought frame a morally difficult binary choice?">
+            <span class="tag">Root / authored premise</span><h2>Blood in the Chapel</h2><p>Garrick raises his blade. Mara needs Edric alive.</p>
+          </article>
+          <div class="branch-line"><i></i><i></i></div>
+          <article class="node choice left" data-node-type="left_right" data-left-target="flooded_passage" data-right-target="guard_stair" data-title="Choice A — Keep Edric alive" data-copy="Rowan blocks the blade. The group walks long enough for the decision to settle before Edric and Garrick offer rival routes: a flooded keeper channel or an exposed guard stair." data-dialogue="SFX::Rowan’s boot grinds across wet stone. Steel stops a breath from cloth.|Mara::Sheathe it, Garrick.|SFX::After a long beat, steel slides home. Four sets of boots leave the chapel.|Garrick::Thomas used to whistle when he lied. Badly.|Edric::He whistled when he was afraid you would hear the truth first.|Garrick::You do not get to remember him with me.|Edric::No. I get to remember him too.|SFX::Their steps enter a junction: rushing water to the left, hollow wind to the right.|Edric::Left is the keeper channel. The sluice is failing, but it is direct.|Garrick::Right is the guard stair. Slower. Dry. I know every beam.|Mara::Edric knows the water. Garrick knows the stair. We choose the danger we can carry.|ROWAN — THOUGHT::I kept Edric breathing. I did not make him innocent, and I did not make Garrick ready to follow him. Left asks for speed and Edric’s word. Right asks Garrick to lead beside his brother’s killer.|Mara::Which way, Rowan—the flooded channel to the left, or Garrick’s stair to the right?" data-questions="Does this dialogue give the initial decision enough room to land?|Should Garrick’s warning feel accusatory or genuinely protective?|Are both physical routes understandable through audio alone?">
+            <span class="tag">Branch A / direction</span><h2>Keep the witness</h2><p>Choose Mara’s mission over Garrick’s revenge.</p>
+          </article>
+          <article class="node choice right" data-node-type="left_right" data-left-target="search_the_dead" data-right-target="force_lantern_gate" data-title="Choice B — Let Garrick kill Edric" data-copy="Rowan steps aside. Garrick kills Edric and finds the keeper key on his body. With a patrol closing, Mara gives Rowan a direct route choice: remain beside the body and search left, or trust the dead keeper’s key at the Lantern Gate to the right." data-dialogue="SFX::A sword cuts the air in one hard swing. Edric’s severed head drops onto the chapel floor.|Garrick::That is for Thomas.|Mara::Garrick, are you okay?|Garrick::Do not comfort me.|SFX::Garrick searches through Edric’s coat and clothing.|Garrick::I found the key on his body.|Mara::Left gives us cover to search his coat. Right leads toward the Lantern Gate, if that key is enough.|Mara::Which way, Rowan—left or right?|ROWAN — THOUGHT::Left means staying beside the body while the patrol closes. Right means trusting a dead man’s key without his voice. Killing Edric ended his choices, not mine. Which way?" data-questions="Does Garrick sound emptied rather than victorious?|Is Mara’s concern human without softening the consequence?|Are left and right unmistakable before Rowan’s internal question?">
+            <span class="tag">Branch B / direction</span><h2>Let Garrick kill him</h2><p>Choose revenge and lose the only guide.</p>
+          </article>
+          <div class="leaf-lines"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i><i class="e"></i><i class="f"></i></div>
+          <article class="node leaf leaf1" data-title="A1 — The flooded passage (pace showcase)" data-copy="The keeper channel floods behind a failing sluice. Sustained pace means reaching the locking grate before the water does—not outrunning a pursuer. Success keeps the group intact; failure gives Edric a costly chance to act." data-dialogue="SFX::A keeper chain snaps overhead. Water strikes the channel in one heavy sheet.|Edric::Listen for the iron knock. The grate drops on the third one.|SFX::Far ahead: one hollow knock.|Garrick::How far?|Edric::Three bends. Do not fight the water. Run across it.|Mara::You heard him. Short steps. Stay together.|SFX::A second iron knock rolls back through the channel.|ROWAN — THOUGHT::The current keeps stealing the ground beneath me. Edric is not asking for a sprint. He is asking us to hold a speed the water cannot break.|Edric::The last knock closes the grate. Rowan, can you keep us on my heels until we are through?" data-questions="What pace range feels demanding but safe?|How should water SFX intensify without masking dialogue?|Does the trial last long enough to feel earned?">
+            <span class="tag">Leaf A1 / pace</span><h2>The flooded passage</h2><p>Follow Edric. Beat the rising water.</p>
+          </article>
+          <article class="node leaf leaf2" data-title="A2 — The guard stair / cadence trial" data-copy="The guard stair crosses a bell shaft on rotten boards. Garrick knows where the buried beams lie, so the runner must match his uneven footfall pattern. A broken rhythm costs evidence and tests Edric’s instinct." data-dialogue="SFX::Wind turns the empty bell shaft into a low flute. Loose boards answer under Garrick’s weight.|Garrick::The safe beams run crooked. Heel where I heel. Silence where I stop.|Edric::Thomas hated this stair.|Garrick::You have used his name enough.|Mara::Garrick. Give us the pattern.|SFX::Three deliberate footfalls travel ahead: step, step—stillness—step.|Garrick::Again.|SFX::Step, step—stillness—step. A board groans somewhere below.|ROWAN — THOUGHT::His grief has a rhythm. Two hard steps, a held breath, then forward. For once I do not need to agree with Garrick. I only need to land where he lands.|Garrick::The shaft is listening, Rowan. Can you keep my cadence all the way across?" data-questions="What cadence feels natural through headphones?|How forgiving should the matching window be?|Can positional audio make Garrick feel physically ahead?">
+            <span class="tag">Leaf A2 / cadence</span><h2>The guard stair</h2><p>Match Garrick’s steps across unstable boards.</p>
+          </article>
+          <article class="node leaf leaf3" data-title="B1 — Search the dead / stop trial" data-copy="Mara searches Edric’s coat while patrol lanterns sweep through the broken roof. The runner moves between shadows and stops precisely when the light crosses, making stillness—not speed—the survival skill." data-dialogue="SFX::Edric’s coat drags over grit. Above, a shuttered patrol lantern clicks open and begins its slow sweep.|Mara::The light crosses every six breaths. We search in the dark and move before it returns.|Garrick::Give me the coat.|Mara::Your hands are shaking.|Garrick::They are cold.|Mara::Then hold the lantern pattern instead.|SFX::Light scrapes over stone, passes, then fades behind a pillar.|ROWAN — THOUGHT::There is blood on Garrick’s cuff and Edric’s warmth still inside the coat. Moving is easy. Standing perfectly still beside what I allowed is the part my body resists.|Mara::I will call the shadow. Can you move with me and stop dead when the lantern turns?" data-questions="How many movement-stop cycles fit the demo?|Are Mara’s prompts distinct from normal narration?|Should the approaching patrol be heard above or behind?">
+            <span class="tag">Leaf B1 / stop</span><h2>Search the dead</h2><p>Find a route before the patrol arrives.</p>
+          </article>
+          <article class="node leaf leaf4" data-title="B2 — Force the lantern gate / pace trial" data-copy="Garrick uses Edric’s key to wake the Lantern Gate, but the gate rises only while Rowan drives its treadle. Mara leads, Rowan follows, and Garrick takes the rear. Holding pace gets all three through; slowing lets the gate fall between Rowan and Garrick." data-dialogue="Garrick::I need the key!|SFX::A brass keeper key unlocks the Lantern Gate. Deep iron gears engage and lift the gate only halfway.|Garrick::It opened.|Mara::Only halfway.|Mara::The treadle winds the counterweight. Keep it moving and the gate stays high.|Mara::I cross first. Rowan, stay on my heels. Garrick, take the rear.|Garrick::If the gate falls, it leaves me behind.|Mara::Then keep moving.|SFX::Rowan drives the treadle into a hard, steady rhythm. Mara runs ahead while Garrick’s boots follow close behind.|ROWAN — THOUGHT::Every step buys the gate another heartbeat. Mara is ahead of me. Garrick is behind. If my pace breaks, the iron falls between us—and he is the one it leaves behind.|Mara::Hold your pace, Rowan. Keep Garrick with us until we are through!" data-questions="Is the crossing order immediately understandable through audio?|Does the treadle rhythm clearly map sustained pace to gate height?|Does failure logically isolate Garrick at the rear?">
+            <span class="tag">Leaf B2 / pace</span><h2>Force the lantern gate</h2><p>Use Edric’s key without his knowledge.</p>
+          </article>
+        </div>
+          <section class="outcome-layer" aria-label="Movement trial outcomes">
+          <section class="branch-outcomes a-outcomes" aria-label="A branch movement outcomes">
+            <div class="trial-group"><p class="trial-label">Child outcomes of A1 / flooded passage</p><div class="outcome-pair">
+              <article class="node leaf" data-title="A1A — Through the grate" data-copy="Rowan holds the pace and everyone clears the grate. At the Vault, Edric hears a mechanism cycling backward: someone used the keeper’s private entrance after Thomas died." data-dialogue="SFX::The third iron knock begins.|Edric::Under the grate. Now.|SFX::Four bodies clear stone. Iron crashes behind them and the flood shears away below.|Mara::Count.|Garrick::Four.|SFX::Ahead, the Lantern Vault mechanism ticks backward—three bright clicks, one dull.|Edric::That lock was reset from inside.|Garrick::How can you tell?|Edric::It is counting backward. Someone left by the keeper door after Thomas died.|ROWAN — THOUGHT::We outran the water and arrived before Edric could shape the evidence. The lock is speaking for him now.|Mara::Then whoever changed the bell had a way into the Vault. Edric, open it." data-questions="Does the broken seal clearly advance the central mystery?|How much suspicion should remain on Edric?|What audio motif identifies the forged signal?">
+                <span class="tag">Situation A / pace held</span><h2>Through the grate</h2><p>The group reaches the vault together.</p>
+              </article>
+              <article class="node leaf" data-title="A1B — The current takes Mara" data-copy="The group falls behind the water and Mara loses her footing. Edric leaves the safe line without hesitation; Garrick must anchor his brother’s killer to bring her back. Mara survives with an injured leg." data-dialogue="SFX::The third iron knock lands too soon. Water folds Mara under without a cry.|Garrick::Mara.|Edric::Belt around my wrist. Brace at the wall.|Garrick::You go under, I do not follow.|Edric::Then do not let me go.|SFX::Edric dives. Leather draws taut; Garrick’s boots skid, catch, and hold.|SFX::Mara breaks the surface coughing. The grate slams ahead of them.|Mara::My knee is wrong.|Garrick::Edric pulled you out.|Mara::I noticed.|ROWAN — THOUGHT::Garrick says Edric’s name as if it has changed weight. It has. Not enough to balance Thomas. Enough that none of us can pretend the scale is simple.|Edric::There is a maintenance stair. Slower. Mara can manage it if we bind the knee." data-questions="Does Edric’s rescue feel earned rather than manipulative?|How should Mara’s injury affect later authority?|Should Garrick’s last line be denial or stunned silence?">
+                <span class="tag">Situation B / pace lost</span><h2>The current takes Mara</h2><p>Edric turns back to save her.</p>
+              </article>
+            </div></div>
+            <div class="trial-group"><p class="trial-label">Child outcomes of A2 / cadence trial</p><div class="outcome-pair">
+              <article class="node leaf" data-title="A2A — The boards hold" data-copy="Rowan keeps Garrick’s cadence. A loose board reveals Thomas’s signal token stamped with a subtly false version of Mara’s seal, proving that he carried evidence of the forged order." data-dialogue="SFX::The final pattern lands clean: step, step—stillness—step. The boards settle.|Garrick::Across.|SFX::A small bronze disc spins beneath Rowan’s heel.|Garrick::Thomas’s signal token.|Mara::My seal is stamped on it.|Edric::Turn it. The west tower faces inward.|Mara::Mine faces the wall.|Garrick::A counterfeit.|SFX::The cracked bell note travels down the shaft. The token answers with a faint metallic ring.|ROWAN — THOUGHT::Thomas did know the order was false. That does not prove Edric’s reason for killing him. It proves they died on opposite sides of the same secret.|Garrick::He hid this where only I would walk.|Mara::Then carry it where he was trying to go." data-questions="Is the reversed-tower detail easy to understand in audio?|Does this clue implicate one believable insider?|Why did Thomas hide the token beneath the stair?">
+                <span class="tag">Situation A / cadence matched</span><h2>The boards hold</h2><p>Thomas’s token proves the order was forged.</p>
+              </article>
+              <article class="node leaf" data-title="A2B — The stair breaks" data-copy="Rowan breaks cadence. The stair gives way, Thomas’s hidden token drops into the shaft, and Edric catches Garrick with the hand that killed his brother. The proof is lost; the debt remains." data-dialogue="SFX::A foot lands between beats. Timber splits and a bronze token skips toward the shaft.|Garrick::Thomas’s—|SFX::The board drops. Garrick goes with it.|Edric::Garrick.|SFX::Leather snaps tight. Edric’s shoulder strikes the rail; below, the token rings once and is gone.|Garrick::Let me go.|Edric::Not this way.|Mara::Rowan, take Garrick’s arm.|SFX::Garrick rolls onto the landing. Edric cradles two bent fingers.|ROWAN — THOUGHT::The evidence has vanished, but I saw Edric choose. His hand closed around Garrick before either man had time to turn grief into principle.|Garrick::Why?|Edric::Because I have killed enough of your family." data-questions="Does losing the token preserve enough mystery?|How does Garrick’s debt change performance without resolving grief?|Should Edric injure his hand during the rescue?">
+                <span class="tag">Situation B / cadence broken</span><h2>The stair breaks</h2><p>Edric catches Garrick before he falls.</p>
+              </article>
+            </div></div>
+          </section>
+          <section class="branch-outcomes b-outcomes" aria-label="B branch pace outcomes">
+            <div class="trial-group"><p class="trial-label">Child outcomes of B1 / search trial</p><div class="outcome-pair">
+              <article class="node leaf" data-title="B1A — The map in the lining" data-copy="Rowan completes the search between lantern sweeps and finds Edric’s map sewn into the coat. It marks the Vault, the false beacon, and Thomas as a witness. The route survives; Edric’s explanation does not." data-dialogue="SFX::The patrol lantern clicks away. Cloth tears once in the dark.|Mara::Waxed paper.|Garrick::Give it here.|SFX::The lantern sweeps back. Everyone goes still; paper trembles in Garrick’s hand.|SFX::Darkness returns. The map unfolds.|Mara::Keeper’s route. Lantern Vault. False eastern beacon.|Garrick::Thomas’s name.|Mara::Beside ‘witness.’|Garrick::He knew.|ROWAN — THOUGHT::Edric carried Thomas’s name next to the truth, close enough to his skin that we nearly missed it. I let the only man who could explain that word die.|SFX::The patrol lantern begins another turn.|Mara::Fold it. We follow Edric’s line while we still have shadow." data-questions="Does this reward the search without undoing the killing?|Should Garrick read the word witness aloud?|Is Mara’s consequence line sharp without moralizing?">
+                <span class="tag">Situation A / search completed</span><h2>Map in the lining</h2><p>Edric left a route and one final accusation.</p>
+              </article>
+              <article class="node leaf" data-title="B1B — Empty hands" data-copy="Rowan moves during a lantern sweep and exposes the search. The group abandons Edric before finding his hidden map, escaping through an unmarked bell shaft with no route and no proof." data-dialogue="SFX::A boot shifts before the lantern passes. Its shutter snaps fully open.|Patrol::Movement below.|SFX::The chapel door takes one armoured blow.|Mara::Search is over. Hatch, now.|Garrick::The lining is stitched. There is something—|SFX::A second blow cracks the door brace.|Mara::Then he keeps it.|SFX::A rusted floor hatch opens. Wind climbs out carrying the cracked bell’s low vibration.|ROWAN — THOUGHT::Garrick’s hand stays in Edric’s coat until the last possible breath. Whatever is sewn there will remain beside the man he killed.|Garrick::No rungs.|Mara::There is a chain. Wrap it once. We descend by feel.|SFX::The door bursts inward as the hatch closes overhead." data-questions="What danger distinguishes the blind shaft from other routes?|Does Garrick show regret through action rather than confession?|What clue can still survive this failure?">
+                <span class="tag">Situation B / search incomplete</span><h2>Empty hands</h2><p>The patrol forces them into a blind descent.</p>
+              </article>
+            </div></div>
+            <div class="trial-group"><p class="trial-label">Child outcomes of B2 / gate trial</p><div class="outcome-pair">
+              <article class="node leaf" data-title="B2A — The unread ledger" data-copy="Rowan holds pace. Mara leads through, Rowan follows, and Garrick clears the Lantern Gate before it falls. Edric’s key opens the inner ledger cabinet, but killing him has left its keeper cipher unreadable." data-dialogue="SFX::The treadle holds its rhythm. Mara clears the gate, Rowan follows, and Garrick dives through just before the iron crashes safely behind them.|Mara::We are through.|Garrick::The key. Give it back.|SFX::The brass key unlocks an inner cabinet. Hundreds of thin metal ledger leaves unfold with a dry metallic whisper.|Garrick::Which one names the traitor?|Mara::None that I can read.|Garrick::Edric could.|Mara::Yes.|ROWAN — THOUGHT::I held the pace and kept Garrick with us. The key brought us to the truth, but killing Edric took away its language. We reached the ledger. We cannot read it.|Garrick::Then we start with the mark on the key." data-questions="Does success feel physical and immediate before the narrative cost lands?|Is the difference between opening the ledger and reading it clear?|Does Edric’s absence matter without undoing the player’s success?">
+                <span class="tag">Situation A / effort held</span><h2>The unread ledger</h2><p>They reach the truth but cannot decipher it.</p>
+              </article>
+              <article class="node leaf" data-title="B2B — Garrick is cut off" data-copy="Rowan’s pace drops for one beat. Mara and Rowan clear the Lantern Gate, but the iron falls before Garrick can follow. Garrick is trapped on the patrol side with Edric’s key while Mara and Rowan race to reopen the gate." data-dialogue="SFX::The Lantern Gate crashes down between Rowan and Garrick.|Mara::Garrick!|Garrick::I am here.|Mara::Are you hurt?|Garrick::No. The key is still with me.|Mara::The patrol is behind you.|Garrick::Find another way to open the gate. I will hold them.|Mara::There is a release wheel on our side. Rowan, help me move it before they reach him!" data-questions="Is the gate crash loud enough to make the separation immediate?|Is Garrick’s position relative to Mara and Rowan unmistakable?|Does the failure create an urgent rescue rather than a dead end?">
+                <span class="tag">Situation B / effort lost</span><h2>Garrick is cut off</h2><p>The falling gate leaves Garrick with the patrol.</p>
+              </article>
+            </div></div>
+          </section>
+          </section>
+        </section>
+        <aside class="inspector" aria-live="polite">
+          <div class="eyebrow">Beat inspector</div>
+          <h2 id="detail-title">Choose a story beat</h2>
+          <p id="detail-copy">Click a card to read its role, dialogue, and the questions we should settle together.</p>
+          <div class="audio-toolbar">
+            <button class="audio-control" id="play-scene" type="button" disabled>Play scene</button>
+            <button class="audio-control secondary" id="stop-audio" type="button" disabled>Stop</button>
+          </div>
+          <div class="audio-status" id="audio-status">Audio manifest not loaded yet.</div>
+          <hr />
+          <div class="eyebrow">Dialogue draft</div>
+          <div class="dialogue" id="detail-dialogue"><div class="dialogue-line">Dialogue appears here when you choose a beat.</div></div>
+          <hr />
+          <div class="eyebrow">Questions to resolve</div>
+          <ul class="questions" id="detail-questions"><li>Start with the root premise.</li></ul>
+        </aside>
+      </div>
+      <div class="note"><strong>Story rule:</strong> the first choice is permanent. On the left, Edric lives and can act, speak, save others, or reveal the truth. On the right, Edric is dead; every later obstacle is harder because Rowan allowed Greywatch’s only guide to be killed.</div>
+    </main>
+    <script src="./story-audio/greywatch/manifest.js"></script>
+    <script>
+      const NODE_TYPES = Object.freeze({
+        VOCAL: 'vocal',
+        LEFT_RIGHT: 'left_right',
+        PACE_CADENCE: 'pace_cadence'
+      });
+
+      document.querySelectorAll('.choice').forEach(node => {
+        node.dataset.nodeType = NODE_TYPES.LEFT_RIGHT;
+      });
+      const rootNode = document.querySelector('.root');
+      rootNode.dataset.nodeType = NODE_TYPES.VOCAL;
+      rootNode.dataset.awaitsVocalResponse = 'true';
+      document.querySelectorAll('.tree > .leaf').forEach(node => {
+        node.dataset.nodeType = NODE_TYPES.PACE_CADENCE;
+        if (node.classList.contains('leaf1') || node.classList.contains('leaf4')) node.dataset.performanceMode = 'pace';
+        if (node.classList.contains('leaf2')) node.dataset.performanceMode = 'cadence';
+        if (node.classList.contains('leaf3')) node.dataset.performanceMode = 'stop_resume';
+      });
+
+      const vocalPrompts = new Map([
+        ['A1A — Through the grate', 'Mara::Rowan, do we trust Edric to open the Vault?'],
+        ['A1B — The current takes Mara', 'Mara::Rowan, do we bind my knee here, or keep moving?'],
+        ['A2A — The boards hold', 'Garrick::Rowan, do we place Thomas’s token in Edric’s hands?'],
+        ['A2B — The stair breaks', 'Garrick::Rowan, does saving me change what we do with him?'],
+        ['B1A — The map in the lining', 'Mara::Rowan, do we follow the route Edric left us?'],
+        ['B1B — Empty hands', 'Mara::Rowan, do we take the chain into the shaft?'],
+        ['B2A — The unread ledger', 'Mara::Rowan, do we press the key’s mark against the first seal?'],
+        ['B2B — Garrick is cut off', 'Mara::Rowan, do we force the release wheel now, or search for another way?']
+      ]);
+      document.querySelectorAll('.outcome-layer .node').forEach(node => {
+        node.dataset.nodeType = NODE_TYPES.VOCAL;
+        node.dataset.awaitsVocalResponse = 'true';
+        node.dataset.vocalPrompt = vocalPrompts.get(node.dataset.title) ?? 'Mara::Rowan, what do you say?';
+      });
+
+      const audioManifest = globalThis.STORY_AUDIO_MANIFEST ?? { lines: [] };
+      const audioByNodeAndIndex = new Map(
+        audioManifest.lines
+          .filter(line => line.status === 'ready' && line.audioPath)
+          .map(line => [`${line.nodeTitle}|${line.index}`, line])
+      );
+      const cards = document.querySelectorAll('.node');
+      const title = document.querySelector('#detail-title');
+      const copy = document.querySelector('#detail-copy');
+      const dialogue = document.querySelector('#detail-dialogue');
+      const questions = document.querySelector('#detail-questions');
+      const playSceneButton = document.querySelector('#play-scene');
+      const stopAudioButton = document.querySelector('#stop-audio');
+      const audioStatus = document.querySelector('#audio-status');
+      let selectedCard = null;
+      let activeAudio = null;
+      let playbackToken = 0;
+
+      function stopAudio() {
+        playbackToken += 1;
+        if (activeAudio) {
+          activeAudio.pause();
+          activeAudio.currentTime = 0;
+          activeAudio = null;
+        }
+        stopAudioButton.disabled = true;
+      }
+
+      function audioFor(card, index) {
+        return audioByNodeAndIndex.get(`${card.dataset.title}|${index}`);
+      }
+
+      function playEntry(entry, token = ++playbackToken) {
+        stopAudio();
+        playbackToken = token;
+        return new Promise(resolve => {
+          const audio = new Audio(entry.audioPath);
+          activeAudio = audio;
+          stopAudioButton.disabled = false;
+          audio.addEventListener('ended', () => { if (activeAudio === audio) activeAudio = null; resolve(); }, { once: true });
+          audio.addEventListener('error', () => { if (activeAudio === audio) activeAudio = null; resolve(); }, { once: true });
+          audio.play().catch(resolve);
+        });
+      }
+
+      function dialogueLinesFor(card) {
+        const lines = card.dataset.dialogue.split('|');
+        if (card.dataset.nodeType === NODE_TYPES.VOCAL && card.dataset.vocalPrompt) lines.push(card.dataset.vocalPrompt);
+        return lines;
+      }
+
+      function renderDialogue(card) {
+        const dialogueLines = dialogueLinesFor(card);
+        const playable = [];
+        const rendered = dialogueLines.map((line, index) => {
+          const [speaker, text] = line.split('::');
+          const item = document.createElement('div');
+          item.className = 'dialogue-line';
+          const entry = audioFor(card, index);
+          const button = document.createElement('button');
+          button.className = 'line-audio';
+          button.type = 'button';
+          button.textContent = '▶';
+          button.disabled = !entry;
+          button.setAttribute('aria-label', entry ? `Play ${speaker} line` : `Audio unavailable for ${speaker} line`);
+          if (entry) {
+            playable.push(entry);
+            button.title = `Play ${entry.id}`;
+            button.addEventListener('click', event => { event.stopPropagation(); playEntry(entry); });
+          }
+          const label = document.createElement('span');
+          label.className = 'speaker';
+          label.textContent = speaker;
+          item.append(button, label, text);
+          if (entry) {
+            const id = document.createElement('span');
+            id.className = 'line-id';
+            id.textContent = entry.id;
+            item.append(id);
+          }
+          return item;
+        });
+        dialogue.replaceChildren(...rendered);
+        playSceneButton.disabled = playable.length === 0;
+        audioStatus.textContent = `${playable.length} of ${dialogueLines.length} lines ready`;
+        return playable;
+      }
+
+      async function playScene() {
+        if (!selectedCard) return;
+        const entries = dialogueLinesFor(selectedCard)
+          .map((_, index) => audioFor(selectedCard, index))
+          .filter(Boolean);
+        if (!entries.length) return;
+        stopAudio();
+        const token = playbackToken;
+        stopAudioButton.disabled = false;
+        for (const entry of entries) {
+          if (token !== playbackToken) break;
+          audioStatus.textContent = `Playing ${entry.id}`;
+          await playEntry(entry, token);
+        }
+        if (token === playbackToken) {
+          audioStatus.textContent = `${entries.length} of ${dialogueLinesFor(selectedCard).length} lines ready`;
+          stopAudioButton.disabled = true;
+        }
+      }
+
+      playSceneButton.addEventListener('click', playScene);
+      stopAudioButton.addEventListener('click', stopAudio);
+      cards.forEach(card => card.addEventListener('click', () => {
+        stopAudio();
+        selectedCard = card;
+        cards.forEach(item => item.classList.remove('active'));
+        card.classList.add('active');
+        title.textContent = card.dataset.title;
+        copy.textContent = card.dataset.copy;
+        renderDialogue(card);
+        questions.replaceChildren(...card.dataset.questions.split('|').map(text => {
+          const item = document.createElement('li');
+          item.textContent = text;
+          return item;
+        }));
+      }));
+    </script>
+  </body>
+</html>

@@ -24,7 +24,16 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-audio",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Worlds to hear your in-story response.",
+          "speechRecognitionPermission": "Allow Worlds to turn your response into text on this device."
+        }
+      ],
+      "expo-asset"
     ]
   }
 }
